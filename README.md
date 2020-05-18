@@ -119,7 +119,7 @@ For more details about the format of the output, please refer to the official [e
 
 ## Installation
 ```
-git clone https://github.com/hsl89/AlectioSDK.git
+git clone https://github.com/alectio/AlectioSDK.git
 cd AlectioSDK
 pip install -r requirements.txt
 python setup.py install
