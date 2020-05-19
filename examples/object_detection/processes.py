@@ -1,6 +1,5 @@
 from dataset import COCO, Transforms, collate_fn
 from model import Darknet
-import env
 
 import torch
 import torch.optim as optim
@@ -18,7 +17,7 @@ from alectio_sdk.torch_utils.utils import batched_cxcy_to_xy
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-# buiding anchor priors on one image
+# building anchor priors on one image
 # the all image are resize to 416, 416
 image_width, image_height = 416, 416
 
@@ -124,7 +123,7 @@ def train(payload):
 
     # resume model and optimizer from previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(env.EXPT_DIR, resume_from))
+        ckpt = torch.load(os.path.join("./log", resume_from))
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
 
@@ -141,7 +140,7 @@ def train(payload):
 
         # batch predictions on each image
         batched_prediction = []
-        for p in output:  # (bacth_size, 3, gx, gy, 85)
+        for p in output:  # (batch_size, 3, gx, gy, 85)
             batch_size = p.shape[0]
             p = p.view(batch_size, -1, 85)
 
@@ -180,7 +179,7 @@ def train(payload):
     # save ckpt for this loop
     ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
 
-    torch.save(ckpt, os.path.join(env.EXPT_DIR, ckpt_file))
+    torch.save(ckpt, os.path.join("./log", ckpt_file))
     return
 
 
@@ -197,7 +196,7 @@ def test(payload):
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
 
-    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join("./log", ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     model.eval()
@@ -295,7 +294,7 @@ def infer(payload):
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join("./log", ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     model.eval()
@@ -311,7 +310,7 @@ def infer(payload):
 
             # batch predictions from 3 yolo layers
             batched_prediction = []
-            for p in output:  # (bacth_size, 3, gx, gy, 85)
+            for p in output:  # (batch_size, 3, gx, gy, 85)
                 batch_size = p.shape[0]
                 p = p.view(batch_size, -1, 85)
                 batched_prediction.append(p)

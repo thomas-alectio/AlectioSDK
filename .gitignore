@@ -138,9 +138,10 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
-# examples data env log
-data/
-log/
+# examples data log
+data
+log
+vector
 
 # VSCode
 

@@ -6,8 +6,8 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="alectio_sdk",
     version="0.0.1",
-    author="Hongshan Li",
-    author_email="hongshan.li@alectio.com",
+    author="Alectio",
+    author_email="admin@alectio.com",
     description="Integrate customer side ML application with Alectio Platform",
     long_description=long_description,
     long_description_content_type="text/markdown",

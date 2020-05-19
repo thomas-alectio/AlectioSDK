@@ -1,8 +1,8 @@
 # Topic Classification on DailyDialog Dataset
 
-This example is intended to show you how to build `train`, `test` and `infer` processes for `AlectioSDK` for topic
-classification problems. We will use [DailyDialog](https://arxiv.org/abs/1710.03957) dataset. Each sample in this
-dataset is a conversation between two persons. The objective is to classify the topic of their converstaion. The topics are labeled as following:
+This example is intended to show you how to build the `train`, `test` and `infer` processes for the `AlectioSDK` for topic
+classification problems. We will use the [DailyDialog](https://arxiv.org/abs/1710.03957) dataset. Each sample in this
+dataset is a conversation between two people. The objective is to classify the topic of their conversation. The topics are labeled as following:
 
 | label | topic |
 | ----- | ----- |
@@ -17,131 +17,111 @@ dataset is a conversation between two persons. The objective is to classify the 
 | 8     | Politics | 
 | 9     | Finance | 
 
-Since the size of this dataset is not too big, we have preprocessed in and 
-put it in `./data` direcotory. 
+Since the size of this dataset is small, it is included in this repo in the `./data` directory. 
 
 
-### Install dependencies 
-We will create a virtual environment for this project and install dependencies
-into the virtual environment. 
+*** All of the following steps assume that your terminal points to the current directory, i.e. `./examples/topic_classification` *** 
 
-1. Go to the root directory of this project and install `virtualenv`
+### 1. Set up a virtual environment and install Alection SDK
+Before getting started, please make sure you completed the [initial installation instructions](../../README.md) to set-up your environment. 
+
+To recap, the steps were setting up a virtual environment and then installing the AlectioSDK in that environment. 
+
+To install the AlectioSDK from within the current directory (`./examples/topic_classification`) run:
+
 ```
-cd <AlectioSDK root>/examples/topic_classification
-pip install virtualenv
+pip install ../../.
 ```
+### 2. Get Data and Dependencies 
 
-2. Create a virtual environment and install dependencies
+Install the requirements via:
 ```
-python -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
 ```
 
 We use `spacy` to parse the text data. The module was already
-installed in this, but we still need to download the English 
-model for it
+installed as part of the requirements, but we still need to download the English 
+model for it via
 ```
 python -m spacy download en
 ```
 
-3. Install `AlectioSDK` to this environment
-```
-cd <AlectioSDK root>
-python setup.py install
-```
-
-4. Download GloVe vectors
+#### Download GloVe vectors
 We will use GloVe 6B.100d for word embedding. 
-Create a direcotory in this project to save 
-the vectors
+
+We download the vectors by running:
 ```
-cd <AlectioSDK root>/examples/topic_classification
 mkdir vector
-```
-Then download the GloVe vectors and unzip it
-```
 cd vector
 wget http://nlp.stanford.edu/data/glove.6B.zip
 unzip glove.6B.zip
+cd ..
 ```
 After you unzipped it, the directory structure of 
-`vector` should look like
+`vector` should look like this:
 ```
-|-- vector 
-|   |-- glove.6B.50d.txt
-|   |-- glove.6B.100d.txt
-|   |-- glove.6B.200d.txt
-|   |-- glove.6B.300d.txt
+├── vector 
+    ├── glove.6B.50d.txt
+    ├── glove.6B.100d.txt
+    ├── glove.6B.200d.txt
+    └── glove.6B.300d.txt
 ```
-Since we are only going to use `glove.6B.100.txt`, you can delete the 
-rest if you prefer to. 
+In this example, we will only need `glove.6B.100d.txt`.
 
-5. Create a log direcotory
+#### Create a log directory
 Create a log directory in the project root to save checkpoints
 ```
-cd <AlectioSDK root>/examples/topic_classification
 mkdir log
 ```
+#### Set Environment Variables 
+To set the environment variables, we run
 
-6. Source the envrionment variables into the current shell session. 
-We will need some environment variables for this project. They are located
-at `./setenv/sh`. Let's take a closer look at those variable
+```
+source setenv.sh 
+```
+The variables are as follows:
 
 | variable | meaning | 
 | -------- | ------- |
 | VECTOR_DIR | directory where word vectors are saved |
 | EXPT_DIR | directory where experiment log and checkpoints are saved |
-| DATA_DIR | direcotry where processed data is saved | 
+| DATA_DIR | directory where processed data is saved | 
 | DEVICE   | cpu or gpu device where model training/testing/inference takes place | 
 | FLASK_ENV | the environment for the Flask app we build |
 
-The default setting of those variables should work. Source those variables
-in the shell
-```
-source setenv.sh
-```
-
-7. Build dataset object
-We will use `pytorch` and `torchtext` for this project. We build a Dataset
+### 3. Build Dataset object
+We will use `pytorch` and `torchtext` for this project. We build a dataset
 object `DailyDialog`, text and label fields there. Please checkout the code
-in `./dataset.py` for more detail
+in [`dataset.py`](./dataset.py) for more details.
 
-8. Build a model
-We will use a 2-layer bidirectional LSTM for text classfication. For
-the architecture of the model see `./model.py`
+### 4. Build Model
+We will use a 2-layer bidirectional LSTM for text classification. For
+the architecture of the model see [`model.py`](./model.py).
 
-
-9. Build train/test/infer processes
-Now, we are in the most important stage of the project, building 
-`train/test/infer` processes for the project.
-Please checkout the `train`, `test`, `infer` functions in `./processes.py`
-Each block of logic in those functions are well commented and you should be
-able to understand what those processes entail. 
+### 5. Build Train, Test and Infer Processes
+The train, test and infer processes are implemented in [`processes.py`](./processes.py).  
+For more information on each, refer to the doc strings of each function.
 
 
-You can try to see those processes in action by 
+Run this step via
 ```python
 python processes.py
 ```
 
-10. Wrap up the processes into a Flask app
-The final touch of the project is in `main.py`, where we wrap up processes
-defined above into `alectio_sdk.flask_wrapper.Pipeline`
+### 6. Build Flask App 
+Finally, to run the flask app, execute:
 
-You can start the app by 
 ```python
 python main.py
 ```
+## Return Types
 
-### Format of the `test/infer` process return
 The return from the `test` and `infer` will be sent to Alectio's platform for 
 computing the model performance and making active learning decisions. 
-Therefore, it is important to make sure the format of those returns are correct
+Therefore, it is important to make sure that they have the expected format.
 
-
-#### Return from `test` process
-Return from the `test` process will be used to compute perforamnce metrics of
+#### Format of the Test Outputs
+Return from the `test` process will be used to compute performance metrics of
 your model. The return is a dictionary with two keys
 
 | key | value |
@@ -149,11 +129,11 @@ your model. The return is a dictionary with two keys
 | predictions | a dictionary of test data index and model's prediction |
 | labels | a dictionary of test data index and its ground-truth label | 
 
-For classfication problem like this project, the model's prediction and 
+For classification problem, the model's prediction and 
 the ground-truth of each test sample is an integer indicating the class label.
 
-For example, if the test set consists of (n+1) samples indexed by (0, 1, ..., n).
-Then the value of `predictions` looks like
+For example, if the test set consists of `(n + 1)` samples indexed by `(0, 1, ..., n)`,
+then the value of `predictions` looks like
 ```python
 {
     0: x0,
@@ -162,7 +142,7 @@ Then the value of `predictions` looks like
     n: xn
 }
 ```
-where $xi$ is the integer class label of sample $i$ predicted by the model. 
+where `xi` is the integer class label of sample `i` predicted by the model. 
 
 The value of `labels` looks like
 ```python
@@ -173,9 +153,6 @@ The value of `labels` looks like
     n: yn
 }
 ```
-where $yi$ is the integer ground-truth class label of sample $i$
+where `yi` is the integer ground-truth class label of sample `i`.
 
-
-### Final words
-Thanks for going through this long readme! Please feel free to send a message at admin@alectio.com
-if you need further assistance to setup your pipeline.
+<!-- The infer process is missing here -->

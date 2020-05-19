@@ -37,7 +37,7 @@ class HardNegativeMultiBoxesLoss(nn.Module):
         
     Shapes:
     -------
-    predicted_boxes: tensor of shape (N, n, 4) (N: batch size, n: number of anchor boexes priors on each image)
+    predicted_boxes: tensor of shape (N, n, 4) (N: batch size, n: number of anchor boxes priors on each image)
         Predicted bounding boxes with respect to the anchor priors. 
         Let [px, py, pw, ph] be the predicted boxes relative to the anchor prior 
         [acx, acy, aw, ah] (in cxcy convention)
@@ -58,7 +58,7 @@ class HardNegativeMultiBoxesLoss(nn.Module):
         
     predicted_class_dist: a tensor of shape (N, n, m) (
         N: batch size, 
-        n: number of anchor boexes priors on each image, 
+        n: number of anchor boxes priors on each image, 
         m: number of distinct classes (includeing the background class))
         Do not apply softmax
     
@@ -140,11 +140,11 @@ class HardNegativeMultiBoxesLoss(nn.Module):
             # object_for_each_prior : [o_0, o_1, ..., o_{n_priors-1}]
             # o_i is the object with highest iou to the prior i
 
-            # We don't want a situation where an object is not represented in our postive
+            # We don't want a situation where an object is not represented in our positive
             # (non-background) prior
             # 1 .An object might not have big iou with all priors and is therefore not in
             # object_for each prior
-            # 2. All priors with the object may be assgined as background based on threshold
+            # 2. All priors with the object may be assigned as background based on threshold
 
             # To remedy this
             # First, find priors with the maximum iou for each object (mask)
@@ -179,7 +179,7 @@ class HardNegativeMultiBoxesLoss(nn.Module):
             # store the true labels for each priors
             true_classes[i] = label_for_each_prior
 
-            # store the encoded ground-truth bbox relateive to the priors
+            # store the encoded ground-truth bbox relative to the priors
             # in log space
             true_locs[i] = cxcy_to_gcxgcy(
                 xy_to_cxcy(boxes[i][object_for_each_prior]),
@@ -213,7 +213,7 @@ class HardNegativeMultiBoxesLoss(nn.Module):
 
         obj_loss = F.mse_loss(predicted_objectness, true_objectness, reduction="none")
 
-        # account loss for all postive class
+        # account loss for all positive class
         obj_loss_pos = obj_loss[positive_priors].mean()
 
         # hard mine negative

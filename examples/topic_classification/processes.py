@@ -1,8 +1,5 @@
 """
-Main processes for the projecct
-
-Author: Hongshan Li
-Email: hongshan.li@alectio.com
+Main processes for the project
 """
 
 import torch
@@ -21,7 +18,7 @@ from model import RNN
 import envs
 
 
-# initialze the model
+# initialize the model
 INPUT_DIM = len(TEXT.vocab)
 EMBEDDING_DIM = 100
 HIDDEN_DIM = 256
@@ -65,12 +62,12 @@ def train(payload):
         resume_from: str
             checkpoint file to resume from. For example, in loop n 
             of active learning, the value of this key is `ckpt_(n-1)`, 
-            indicating that you should resume from ckeckpoint saved in loop n-1
+            indicating that you should resume from checkpoint saved in loop n-1
         
         ckpt_file: str
-            ckeckpoint file to save. For example, in loop n of active 
+            checkpoint file to save. For example, in loop n of active 
             learing, the value of this key is `ckpt_n`, i.e. you 
-            should save the model ckeckpoint as `ckpt_n` in your log directory
+            should save the model checkpoint as `ckpt_n` in your log directory
     
     """
 
@@ -150,7 +147,7 @@ def train(payload):
             if steps % print_fq == 0:
                 print(
                     "Epoch: {}, Global Step: {}, Loss: {}".format(
-                        epoch, step, loss.item()
+                        epoch, steps, loss.item()
                     )
                 )
 
@@ -170,7 +167,7 @@ def test(payload):
         It is parsed as an immutable dictionary with 1 key
         
         ckpt_file: str
-            The model ckeckpoint file to be tested. For example,
+            The model checkpoint file to be tested. For example,
             in loop n of active learning, the value of this key is 
             `ckpt_n`, indicating that you should load your model
             from `ckpt_n` in the log directory and test it
