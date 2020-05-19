@@ -56,6 +56,7 @@ We will use GloVe 6B.100d for word embedding.
 Create a direcotory in this project to save 
 the vectors
 ```
+cd <AlectioSDK root>/examples/topic_classification
 mkdir vector
 ```
 Then download the GloVe vectors and unzip it
@@ -176,6 +177,6 @@ where $yi$ is the integer ground-truth class label of sample $i$
 
 
 ### Final words
-Thanks for going through this long readme (I know)! Please feel free to send 
-[me](https://www.linkedin.com/in/hongshanli/) a message at hongshan.li@alectio.com
+Thanks for going through this long readme! Please feel free to send 
+[me](https://www.linkedin.com/in/prateek-m-00a22a125/) a message at prateekmalhotra@alectio.com
 if you need further assistance to setup your pipeline.
