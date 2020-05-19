@@ -143,6 +143,13 @@ be most valuable to your model.
 Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the 
 arguments of this process.
 
+### 6. Build Flask App 
+Finally, to run the flask app, execute:
+
+```
+python main.py --expname <experiment-name>
+```
+
 #### Return of the Infer Process
 The return of the infer process is a dictionary
 ```python
