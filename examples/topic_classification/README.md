@@ -149,10 +149,10 @@ your model. The return is a dictionary with two keys
 | predictions | a dictionary of test data index and model's prediction |
 | labels | a dictionary of test data index and its ground-truth label | 
 
-For classficatio problem like this project, the model's prediction and 
+For classfication problem like this project, the model's prediction and 
 the ground-truth of each test sample is an integer indicating the class label.
 
-For example, if the test set consists of $n+1$ samples indexed by $0, 1, \cdots, n$.
+For example, if the test set consists of (n+1) samples indexed by (0, 1, ..., n).
 Then the value of `predictions` looks like
 ```python
 {
