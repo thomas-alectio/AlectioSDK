@@ -19,8 +19,6 @@ Follow the readme in the [examples directory](../)
 ### 2. Download pre-processed data from Alectio public resource S3 bucket
 This step requires aws command line interface, which is part of python 
 dependencies of this enviornment. 
-Don't worry if you don't have an aws account, you won't need it to download
-stuffs from public buckets
 
 ```
 cd <this directory>
@@ -29,8 +27,7 @@ cd data
 aws s3 cp s3://alectio-resources/cocosamples . --recursive
 ```
 
-For most part the data is preprocessed according to the Darknet convention. The only difference
-is that we use xyxy for ground-truth bounding box. 
+Please note that to run the above command, you need to first configure the aws cli as mentioned [here](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html). For most part the data is preprocessed according to the Darknet convention. The only difference is that we use xyxy for ground-truth bounding box. 
 
 ### 3. Build train process
 We will train a [Darknet yolov3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) for
