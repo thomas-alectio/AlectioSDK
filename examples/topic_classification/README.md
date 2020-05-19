@@ -177,6 +177,5 @@ where $yi$ is the integer ground-truth class label of sample $i$
 
 
 ### Final words
-Thanks for going through this long readme! Please feel free to send 
-[me](https://www.linkedin.com/in/prateek-m-00a22a125/) a message at prateekmalhotra@alectio.com
+Thanks for going through this long readme! Please feel free to send a message at admin@alectio.com
 if you need further assistance to setup your pipeline.
