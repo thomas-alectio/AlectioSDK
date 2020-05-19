@@ -17,6 +17,5 @@ setuptools.setup(
         "License :: Anything in favor of us",
         "Operating System :: Linux",
     ],
-    python_requires='>=3.6',
+    python_requires=">=3.6",
 )
-
