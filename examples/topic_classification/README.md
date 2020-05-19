@@ -112,7 +112,7 @@ python processes.py
 Finally, to run the flask app, execute:
 
 ```python
-python main.py
+python main.py --expname <experiment-name>
 ```
 ## Return Types
 
