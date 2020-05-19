@@ -11,8 +11,8 @@ processes in a consistent manner. Customers need to implement 3 processes as pyt
 * A process to test the model
 * A process to apply the model to infer on unlabeled data
 
-### train the model
-The logic for training the model should be implemented in this process. The function should look like
+### Train the Model
+The logic for training the model should be implemented in this process. The function should look like:
 
 ```python
 def train(payload):
@@ -45,9 +45,9 @@ name). We call it `labeled` because in the active learning setting, this list re
 samples iteratively labeled by the human oracle. 
 
 
-### Test the model
+### Test the Model
 The logic for testing the model should be implemented in this process. The function representing this 
-process should look like
+process should look like:
 
 ```python
 def test(payload):
@@ -79,12 +79,11 @@ The test function needs to return a dictionary with two keys
 | predictions | a dictionary of an index and a prediction for each test sample|
 | labels | a dictionary of an index and a ground truth label for each test sample|
 
-The format of the values depends on the type of ML problem. Please refer to the official
-[examples](./examples) for details
+The format of the values depends on the type of ML problem. Please refer to the [examples](./examples) directory for details.
 
-## Apply inference
+## Apply Inference
 The logic for applying the model to infer on the unlabeled data should be implemented in this process. 
-The function representing this process looks like:
+The function representing this process should look like:
 ```python
 def infer(payload):
     # get the indices of unlabeled data
@@ -115,16 +114,24 @@ The `infer` function needs to return a dictionary with one key
 | outputs | a dictionary of indexes mapped to the models output before an activation function is applied |
 
 For example, if it is a classification problem, return the output **before** applying softmax. 
-For more details about the format of the output, please refer to the official [examples](./examples)
+For more details about the format of the output, please refer to the [examples](./examples) directory. 
 
 ## Installation
-```
-git clone https://github.com/alectio/AlectioSDK.git
-cd AlectioSDK
-pip install -r requirements.txt
-python setup.py install
-```
 
-## Examples 
-To help customers using this package, we provide detailed [examples](./examples) that covers a wide range of 
-ML problems 
+### 1. Set up a virtual environment 
+We recommend to set-up a virtual environment. 
+
+For example, you can use python's built-in virtual environment via:
+
+```
+python3 -m venv env
+source env/bin/activate
+```
+### 2. Install AlectioSDK
+
+```
+pip install .
+```
+### 3. Run Examples
+
+The remaining installation instructions are detailed in the [examples](./examples) directory. We cover one example for [topic classification](./examples/topic_classification) and one example for [object detection](./examples/object_detection).

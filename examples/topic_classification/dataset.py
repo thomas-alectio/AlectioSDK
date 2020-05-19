@@ -17,27 +17,23 @@ import envs
 stop_words = [x for x in STOP_WORDS]
 
 # ignore _ and eou, they are used as token to indicate one person ends the talk
-stop_words.extend(["_", "eou"]) 
+stop_words.extend(["_", "eou"])
 
 
-TEXT = data.Field(tokenize='spacy', sequential=True,
-        stop_words=stop_words, include_lengths=True)
+TEXT = data.Field(
+    tokenize="spacy", sequential=True, stop_words=stop_words, include_lengths=True
+)
 
 LABEL = data.LabelField(dtype=torch.float, sequential=False)
 
 
-fields = {
-        'text': ('text', TEXT),
-        'label': ('label', LABEL)
-    }
+fields = {"text": ("text", TEXT), "label": ("label", LABEL)}
+
 
 class DailyDialog(Dataset):
     def __init__(self, path, text_field, label_field, samples=None, cap=None):
-        fields = {
-            'text': ('text', TEXT),
-            'label': ('label', LABEL)
-            }
-        with open(path, 'r', encoding='utf-8') as f:
+        fields = {"text": ("text", TEXT), "label": ("label", LABEL)}
+        with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
         if samples:
@@ -50,7 +46,7 @@ class DailyDialog(Dataset):
                 examples.append(Example.fromdict(d, fields))
         if cap:
             if not isinstance(cap, int):
-                raise("cap needs to be an instance of int, got {}".format(cap))
+                raise ("cap needs to be an instance of int, got {}".format(cap))
             if cap < len(examples):
                 examples = examples[:cap]
         if isinstance(fields, dict):
@@ -60,18 +56,22 @@ class DailyDialog(Dataset):
                     fields.extend(field)
                 else:
                     fields.append(field)
-                    
+
         super(DailyDialog, self).__init__(examples, fields)
 
 
-# build a dataset for the entire training set        
-entire_data = DailyDialog(path=os.path.join(envs.DATA_DIR,
-    'train.json'), text_field=TEXT, 
-    label_field=LABEL, samples=None, cap=None)
+# build a dataset for the entire training set
+entire_data = DailyDialog(
+    path=os.path.join(envs.DATA_DIR, "train.json"),
+    text_field=TEXT,
+    label_field=LABEL,
+    samples=None,
+    cap=None,
+)
 
 
 # load glove vectors
-vectors = Vectors(name='glove.6B.100d.txt', cache=envs.VECTOR_DIR)
+vectors = Vectors(name="glove.6B.100d.txt", cache=envs.VECTOR_DIR)
 
 
 # build text field with the glove vectors
@@ -80,5 +80,3 @@ TEXT.build_vocab(entire_data, vectors=vectors)
 
 # build a label field based on the entire data
 LABEL.build_vocab(entire_data)
-
-
