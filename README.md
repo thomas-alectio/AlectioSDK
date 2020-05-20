@@ -1,19 +1,18 @@
 # Alectio SDK
 
-AlectioSDK is a package that enables developers to build ML pipeline as a Flask app to interact with Alectio's
+AlectioSDK is a package that enables developers to build an ML pipeline as a Flask app to interact with Alectio's
 platform. 
-It is designed for Alectio's clients, who perfer to keep their model and data on their on server. 
+It is designed for Alectio's clients, who prefer to keep their model and data on their on server. 
 
-The package is under active development. More functionalities that aim to enhance robustness will be added soon
-As for now the package provides a class `alectio_sdk.flask_wrapper.Pipeline` that inferfaces with customer-side
-processes in a consistent manner. Customers need to implement 3 processes as python function:
+The package is currently under active development. More functionalities that aim to enhance robustness will be added soon, but for now the package provides a class `alectio_sdk.flask_wrapper.Pipeline` that inferfaces with customer-side
+processes in a consistent manner. Customers need to implement 3 processes as python functions:
 
 * A process to train the model
 * A process to test the model
 * A process to apply the model to infer on unlabeled data
 
-### train the model
-The logic for training the model should be implemented in this process. The function should look like
+### Train the Model
+The logic for training the model should be implemented in this process. The function should look like:
 
 ```python
 def train(payload):
@@ -42,13 +41,13 @@ dictionary with 3 keys
 | labeled | a list of indices of selected samples used to train the model in this loop | 
 
 Depending on your situation, the samples indicated in `labeled` might not be labeled (despite the variable
-name). We call it `labaled` because in the active learning setting, this list represents the pool of 
+name). We call it `labeled` because in the active learning setting, this list represents the pool of 
 samples iteratively labeled by the human oracle. 
 
 
-### Test the model
+### Test the Model
 The logic for testing the model should be implemented in this process. The function representing this 
-process should look like
+process should look like:
 
 ```python
 def test(payload):
@@ -58,7 +57,7 @@ def test(payload):
     # implement your testing logic here
     
     
-    # put the prediction and label into 
+    # put the predictions and labels into 
     # two dictionaries
     
     # lbs <- dictionary of indices of test data and their ground-truth
@@ -77,21 +76,20 @@ The test function needs to return a dictionary with two keys
 
 | key | value |
 | --- | ----- | 
-| predictions | dictionary of index of test sample and its prediction |
-| labels | dictionary of index of test sample and its true label |
+| predictions | a dictionary of an index and a prediction for each test sample|
+| labels | a dictionary of an index and a ground truth label for each test sample|
 
-The format of the values depends on the type of ML problem. Please refer to the official
-[examples](./examples) for details
+The format of the values depends on the type of ML problem. Please refer to the [examples](./examples) directory for details.
 
-## Apply inference
+## Apply Inference
 The logic for applying the model to infer on the unlabeled data should be implemented in this process. 
-The function representing this process looks like:
+The function representing this process should look like:
 ```python
 def infer(payload):
     # get the indices of unlabeled data
     unlabeled = payload['unlabeled']
     
-    # get the checkpoint file to be used for making inference
+    # get the checkpoint file to be used for applying inference
     ckpt_file = payload['ckpt_file']
     
     # implement your inference logic here
@@ -102,6 +100,7 @@ def infer(payload):
 ```
 
 The infer function takes an argument `payload`, which is a dictionary with 2 keys:
+
 | key | value |
 | --- | ----  | 
 | ckpt_file | a string that specifies which checkpoint to use to infer on the unlabeled data | 
@@ -109,29 +108,30 @@ The infer function takes an argument `payload`, which is a dictionary with 2 key
 
 
 The `infer` function needs to return a dictionary with one key
+
 | key | value |
 | --- | ----- | 
-| outputs | dictionary of index of unlabeled data and the model's output on it |
+| outputs | a dictionary of indexes mapped to the models output before an activation function is applied |
 
-
-To take the most out of Alectio's platform, we suggest you return the 'rawest' output. For example, 
-if it is a classification problem, return the output before applying softmax. 
-For more details about the format of the output, please refer to the official [examples](./examples)
-
+For example, if it is a classification problem, return the output **before** applying softmax. 
+For more details about the format of the output, please refer to the [examples](./examples) directory. 
 
 ## Installation
+
+### 1. Set up a virtual environment 
+We recommend to set-up a virtual environment. 
+
+For example, you can use python's built-in virtual environment via:
+
 ```
-git clone https://github.com/hsl89/AlectioSDK.git
-cd AlectioSDK
-pip install -r requirements.txt
-python setup.py install
+python3 -m venv env
+source env/bin/activate
 ```
+### 2. Install AlectioSDK
 
-## Examples 
-To help customers using this package, we provide detailed [examples](./examples) that covers a wide range of 
-ML problems 
+```
+pip install .
+```
+### 3. Run Examples
 
-
-
-
-
+The remaining installation instructions are detailed in the [examples](./examples) directory. We cover one example for [topic classification](./examples/topic_classification) and one example for [object detection](./examples/object_detection).
