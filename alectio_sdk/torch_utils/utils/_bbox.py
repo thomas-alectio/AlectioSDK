@@ -140,7 +140,9 @@ def batched_gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
             each prior shoud follow cxcy format
 
     '''
-    
+    #print("gcxgcy.type ", gcxgcy.type())
+    #print("priors_cxcy.type ", priors_cxcy.type())
+    priors_cxcy = priors_cxcy.cuda()
     return torch.cat([
         gcxgcy[:,:,:2]*priors_cxcy[:,:,2:]/10 + priors_cxcy[:,:,:2],
         gcxgcy[:,:,2:]*torch.exp(priors_cxcy[:,:,2:]/5)], dim=2)

@@ -148,8 +148,10 @@ class HardNegativeMultiBoxesLoss(nn.Module):
             
             
             # Then assign each object to the corresponding prior with max iou
-            object_for_each_prior[prior_for_each_object]=torch.LongTensor(
-                range(n_objects), device=self.device)
+            
+            object_for_each_prior[prior_for_each_object]= torch.LongTensor(
+                        range(n_objects)).cpu()
+          
             
             # object_for_each_prior = [o0, o1, o2,...o_{n_priors-1}]
             # oi is the local object (index of the box in bbox) with max iou with prior i
@@ -228,10 +230,10 @@ class HardNegativeMultiBoxesLoss(nn.Module):
         obj_loss_neg, _ = obj_loss_neg.sort(dim=1, descending=True)
         
         hardness_ranks = torch.LongTensor(
-            range(n_priors), device=self.device).unsqueeze(0).expand_as(
-            obj_loss_neg)
+            range(n_priors)).unsqueeze(0).expand_as(
+            obj_loss_neg).cpu()
         
-        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1)
+        hard_negatives = hardness_ranks < n_hard_negatives.unsqueeze(1).cpu()
         
         
         obj_loss_hardneg = obj_loss_neg[hard_negatives].mean()
