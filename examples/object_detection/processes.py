@@ -378,11 +378,11 @@ if __name__ == '__main__':
     # debug
     # train
 
-    labeled = range(10),
-    resume_from = None,
+    labeled = list(range(10))
+    resume_from = None
     ckpt_file = 'ckpt_0'
     logdir = 'test'
     
     train(labeled=labeled, resume_from=resume_from, 
-          ckpt_file=ckpt_file, logdir=logdir)
+          ckpt_file=ckpt_file)
     
