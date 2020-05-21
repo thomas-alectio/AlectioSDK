@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 import torchvision as tv
 
 import os
+from tqdm import tqdm
 
 from alectio_sdk.torch_utils.loss import HardNegativeMultiBoxesLoss
 from alectio_sdk.torch_utils.utils import Anchors, batched_gcxgcy_to_cxcy
@@ -138,7 +139,7 @@ def train(labeled, resume_from, ckpt_file):
     loss_fn = HardNegativeMultiBoxesLoss(priors, device=device)
     
     model.train()
-    for img, boxes, labels in loader:
+    for img, boxes, labels in tqdm(loader, desc='Training'):
         img = img.to(device)
         
         # 3 predictions from 3 yolo layers
@@ -213,7 +214,7 @@ def test(ckpt_file):
     # keep track of ground-truth boxes and label 
     labels = []
     with torch.no_grad():
-        for img, boxes, class_labels in loader:
+        for img, boxes, class_labels in tqdm(loader, desc='Testing'):
             img = img.to(device)
             # get inference output
             output = model(img)
@@ -293,9 +294,8 @@ def test(ckpt_file):
     return {"predictions": prd, "labels": lbs}
         
         
-def infer(unlabeled, ckpt_file):    
+def infer(unlabeled, ckpt_file):  
     batch_size=16
-     
     coco = COCO(env.DATA_DIR, Transforms(), samples=unlabeled, train=True)
     loader = DataLoader(coco, shuffle=False, batch_size=batch_size,
                        collate_fn=collate_fn)
@@ -311,7 +311,7 @@ def infer(unlabeled, ckpt_file):
     predictions = []
   
     with torch.no_grad():
-        for img, _, _ in loader:
+        for img, _, _ in tqdm(loader, desc='Inferring'):
             img = img.to(device)
             # get inference output
             output = model(img)
