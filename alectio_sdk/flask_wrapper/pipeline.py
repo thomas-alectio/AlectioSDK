@@ -87,7 +87,7 @@ class Pipeline(object):
         self.ckpt_file = 'ckpt_{}'.format(self.cur_loop)
         
         self.train()
-        #self.test()
+        self.test()
         self.infer()
         
     def train(self):
