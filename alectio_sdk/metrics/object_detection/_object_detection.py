@@ -151,8 +151,8 @@ class Metrics(object):
             fpBoolmap = fpBoolmap[ix]
             falsePositives = np.cumsum(fpBoolmap)
             truePositives  = np.cumsum(tpBoolmap)
-            recall = self.recall(truePositives,num_annotations)
-            precision = self.precision(truePositives,falsePositives)
+            recall = self.calc_recall(truePositives,num_annotations)
+            precision = self.calc_precision(truePositives,falsePositives)
             
             self.AP[label]     = compute_ap(recall, precision)
             self.recall[label] = np.sum(tpBoolmap)/num_annotations
@@ -165,7 +165,7 @@ class Metrics(object):
         """
         AP = {}
         for c in self.AP:
-            AP[c] = self.AP[c].item()
+            AP[c] = self.AP[c]
         return AP
     
         
@@ -230,7 +230,7 @@ class Metrics(object):
                     currCM[label, currlabel] +=1
         return currCM
         
-    def precision(self,truePositives, falsePositives):
+    def calc_precision(self,truePositives, falsePositives):
         """
         Description:
             Fuction computes precision
@@ -243,7 +243,7 @@ class Metrics(object):
         """
         return truePositives / np.maximum(truePositives + falsePositives, np.finfo(np.float64).eps)
         
-    def recall(self,truePositives, nGT):
+    def calc_recall(self,truePositives, nGT):
         """
         Description:
             Fuction computes recall

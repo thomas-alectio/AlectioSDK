@@ -7,7 +7,7 @@ setuptools.setup(
     name="alectio_sdk",
     version="0.0.1",
     author="Hongshan Li",
-    author_email="hongshan.li@alectio.com",
+    author_email="admin@alectio.com",
     description="Integrate customer side ML application with Alectio Platform",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -15,8 +15,8 @@ setuptools.setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: Anything in favor of us",
-        "Operating System :: Linux",
-    ],
+        "Operating System :: Linux"],
     python_requires='>=3.6',
-)
+    package_data={'': ['config.json']},
+    include_package_data=True)
 
