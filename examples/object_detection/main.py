@@ -15,5 +15,4 @@ if __name__ == '__main__':
 	"cur_loop": 0,
 	"type": "Object Detection"}
 
-	app._one_loop(payload)
-    # app(debug=True)
+    app(debug=True)
