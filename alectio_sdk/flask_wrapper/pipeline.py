@@ -11,6 +11,7 @@ import json
 from copy import deepcopy
 
 from .s3_client import S3Client
+from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 
 class Pipeline(object):
     def __init__(self, name, train_fn, test_fn, infer_fn):
@@ -86,11 +87,9 @@ class Pipeline(object):
         self.ckpt_file = 'ckpt_{}'.format(self.cur_loop)
         
         self.train()
-        self.test()
+        #self.test()
         self.infer()
         
-        
-    
     def train(self):
         ''' run customer training process 
         fetch selected indices upto current loop 
@@ -121,8 +120,7 @@ class Pipeline(object):
         
         labels = self.train_fn(labeled=deepcopy(self.labeled), 
                                resume_from=self.resume_from, 
-                               ckpt_file=self.ckpt_file,
-                               logdir=self.logdir)
+                               ckpt_file=self.ckpt_file)
         
         end = time.time()
         
@@ -147,7 +145,7 @@ class Pipeline(object):
         -------
             (predictions, ground_truth)
         '''
-        res = self.test_fn(ckpt_file=self.ckpt_file, logdir=self.logdir)
+        res = self.test_fn(ckpt_file=self.ckpt_file)
         
         predictions, ground_truth = res['predictions'], res['labels']
         
@@ -167,7 +165,6 @@ class Pipeline(object):
     
     def compute_metrics(self, predictions, ground_truth):
         if self.type == 'Object Detection':
-            from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
             
             det_boxes, det_labels, det_scores, true_boxes, true_labels = batch_to_numpy(
                 predictions, ground_truth)
@@ -203,9 +200,8 @@ class Pipeline(object):
         # Get unlabeled
         ts = range(self.meta_data['train_size'])
         self.unlabeled = list(set(ts) - set(self.labeled))
-        
         outputs = self.infer_fn(unlabeled=deepcopy(self.unlabeled),
-                           ckpt_file=self.ckpt_file, logdir=logdir)['outputs']
+                           ckpt_file=self.ckpt_file)['outputs']
         
         # write the output to S3
         key = os.path.join(self.expt_dir, "outputs_{}.pkl".format(self.cur_loop))
