@@ -35,10 +35,7 @@ pip install -r requirements.txt
 Create a data directory in the current directory and download the data.
 
 ```
-mkdir data
-cd data
-aws s3 cp s3://alectio-resources/cocosamples . --recursive
-cd .. 
+sh download_datasets.sh
 ```
 
 Please note that to run the above command, you need to first [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
