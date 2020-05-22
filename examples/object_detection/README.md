@@ -63,13 +63,6 @@ The test process tests the model trained in each active learning loop.
 In this example, the test process is the `test` function defined 
 in `processes.py`. 
 
-To try out this step, first create a log dir via
-
-```
-mkdir log
-```
-and then run
-
 ```
 python processes.py
 ```
