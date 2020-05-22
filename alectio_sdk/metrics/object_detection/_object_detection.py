@@ -53,55 +53,75 @@ class Metrics(object):
                 with grounth-truth bouding box
 
     """
-    
-    def __init__(self,det_boxes, det_labels, det_scores, true_boxes, 
-                 true_labels, num_classes,  threshold=0.5):
-        
-        self.det_boxes    = det_boxes
-        self.det_labels   = det_labels
-        self.det_scores   = det_scores
-        self.true_boxes   = true_boxes
-        self.true_labels  = true_labels
-        self.num_classes  = num_classes
-        self.threshold    = threshold
- 
-        self.reordered_trueboxes  = []
-        self.reordered_detboxes   = []
-        self.reordered_detscores  = []
-        self.confusionMatrix      =  CM(self.num_classes)
-        self.AP ={}
+
+    def __init__(
+        self,
+        det_boxes,
+        det_labels,
+        det_scores,
+        true_boxes,
+        true_labels,
+        num_classes,
+        threshold=0.5,
+    ):
+
+        self.det_boxes = det_boxes
+        self.det_labels = det_labels
+        self.det_scores = det_scores
+        self.true_boxes = true_boxes
+        self.true_labels = true_labels
+        self.num_classes = num_classes
+        self.threshold = threshold
+
+        self.reordered_trueboxes = []
+        self.reordered_detboxes = []
+        self.reordered_detscores = []
+        self.confusionMatrix = CM(self.num_classes)
+        self.AP = {}
         self.recall = {}
         self.precision = {}
         self._reformatboxes()
         self._evaluate()
-    
+
     def _reformatboxes(self):
         """
         Description:
             Reformats detection and annotation boxes labelwise 
         """
         for i in range(len(self.true_boxes)):
-            self.reordered_trueboxes.append([np.array([]) for _ in range(self.num_classes)])
-            self.reordered_detboxes.append([np.array([]) for _ in range(self.num_classes)])
-            self.reordered_detscores.append([np.array([]) for _ in range(self.num_classes)])
-            currtrueBoxes  = self.true_boxes[i]
+            self.reordered_trueboxes.append(
+                [np.array([]) for _ in range(self.num_classes)]
+            )
+            self.reordered_detboxes.append(
+                [np.array([]) for _ in range(self.num_classes)]
+            )
+            self.reordered_detscores.append(
+                [np.array([]) for _ in range(self.num_classes)]
+            )
+            currtrueBoxes = self.true_boxes[i]
             currtrueLabels = self.true_labels[i]
-            
+
             ######## Map Annotation boxes labelwise ####################
             for label in range(self.num_classes):
-                self.reordered_trueboxes[-1][label] = currtrueBoxes[currtrueLabels == label]
-                
+                self.reordered_trueboxes[-1][label] = currtrueBoxes[
+                    currtrueLabels == label
+                ]
+
             if self.det_boxes[i] is not None:
-                currdetSort   = np.argsort(self.det_scores[i])
+                currdetSort = np.argsort(self.det_scores[i])
                 currdetLabels = self.det_labels[i][currdetSort]
-                currdetBoxes  = self.det_boxes[i][currdetSort]
-                currdetScores  = self.det_scores[i][currdetSort]
-                               
+                currdetBoxes = self.det_boxes[i][currdetSort]
+                currdetScores = self.det_scores[i][currdetSort]
+
                 ######## Map Detection boxes labelwise ####################
                 for label in range(self.num_classes):
-                    self.reordered_detboxes[-1][label]  = currdetBoxes[currdetLabels == label]
-                    self.reordered_detscores[-1][label] = currdetScores[currdetLabels == label]
-                        
+                    self.reordered_detboxes[-1][label] = currdetBoxes[
+                        currdetLabels == label
+                    ]
+                    self.reordered_detscores[-1][label] = currdetScores[
+                        currdetLabels == label
+                    ]
+
     def _evaluate(self):
         """
         Description:
@@ -109,54 +129,66 @@ class Metrics(object):
         
         """
         for label in range(self.num_classes):
-            tpBoolmap = detScores =[]
+            tpBoolmap = detScores = []
             nothingness = False
             tp = fp = num_annotations = 0
             for i in range(len(self.reordered_trueboxes)):
-                currGT     = self.reordered_trueboxes[i][label]
-                currDet    = self.reordered_detboxes[i][label]
+                currGT = self.reordered_trueboxes[i][label]
+                currDet = self.reordered_detboxes[i][label]
                 currDetscores = self.reordered_detscores[i][label]
                 detectedGT = []
                 num_annotations += currGT.shape[0]
-                
-                for box,score in zip(currDet,currDetscores):
+
+                for box, score in zip(currDet, currDetscores):
                     detScores.append(score)
                     if currGT.shape[0] == 0:
                         tpBoolmap.append(0)
-                        fp +=1
+                        fp += 1
                         continue
-                    Ious       = compute_iou(np.expand_dims(box, axis=0), currGT)
-                    assignedGT = np.argmax(Ious, axis = 1)                         ##### Get the box with maximum overlap
+                    Ious = compute_iou(np.expand_dims(box, axis=0), currGT)
+                    assignedGT = np.argmax(
+                        Ious, axis=1
+                    )  ##### Get the box with maximum overlap
                     currIou = Ious[0, assignedGT]
-                    
+
                     if currIou >= self.threshold and assignedGT not in detectedGT:
-                        tp+=1
+                        tp += 1
                         detectedGT.append(assignedGT)
                         tpBoolmap.append(1)
                     else:
-                        fp+=1
+                        fp += 1
                         tpBoolmap.append(0)
                 ############## Recompute confusion Matrix using current values ###############
-                if i == (len(self.reordered_trueboxes) -1):
+                if i == (len(self.reordered_trueboxes) - 1):
                     nothingness = True
-                self.recompute_ConfusionMatrix(tp,fp,num_annotations,label,currDet,self.reordered_trueboxes[i],nothingness)
-            
+                self.recompute_ConfusionMatrix(
+                    tp,
+                    fp,
+                    num_annotations,
+                    label,
+                    currDet,
+                    self.reordered_trueboxes[i],
+                    nothingness,
+                )
+
             if num_annotations == 0:
                 self.AP[label] = 0
                 continue
             tpBoolmap = np.array(tpBoolmap)
             fpBoolmap = np.ones_like(tpBoolmap) - tpBoolmap
-            ix        = np.argsort(np.array(detScores))
+            ix = np.argsort(np.array(detScores))
             tpBoolmap = tpBoolmap[ix]
             fpBoolmap = fpBoolmap[ix]
             falsePositives = np.cumsum(fpBoolmap)
-            truePositives  = np.cumsum(tpBoolmap)
-            recall = self.calc_recall(truePositives,num_annotations)
-            precision = self.calc_precision(truePositives,falsePositives)
-            
-            self.AP[label]     = compute_ap(recall, precision)
-            self.recall[label] = np.sum(tpBoolmap)/num_annotations
-            self.precision[label] = np.sum(tpBoolmap)/(np.sum(tpBoolmap)+np.sum(fpBoolmap))
+            truePositives = np.cumsum(tpBoolmap)
+            recall = self.calc_recall(truePositives, num_annotations)
+            precision = self.calc_precision(truePositives, falsePositives)
+
+            self.AP[label] = compute_ap(recall, precision)
+            self.recall[label] = np.sum(tpBoolmap) / num_annotations
+            self.precision[label] = np.sum(tpBoolmap) / (
+                np.sum(tpBoolmap) + np.sum(fpBoolmap)
+            )
 
     def getAP(self):
         """
@@ -167,8 +199,7 @@ class Metrics(object):
         for c in self.AP:
             AP[c] = self.AP[c]
         return AP
-    
-        
+
     def getmAP(self):
         """
         Description:
@@ -178,7 +209,7 @@ class Metrics(object):
              mAP score as float
         """
         return np.mean([ap for c, ap in self.AP.items()]).item()
-    
+
     def getprecision(self):
         """
         Description:
@@ -188,7 +219,7 @@ class Metrics(object):
              Precision score as float
         """
         return np.mean([prec for c, prec in self.precision.items()]).item()
-    
+
     def getrecall(self):
         """
         Description:
@@ -198,9 +229,8 @@ class Metrics(object):
              Recall score as float
         """
         return np.mean([rec for c, rec in self.recall.items()]).item()
-    
-    
-    def process_incorrect(self,detections, GTannotations , currlabel):
+
+    def process_incorrect(self, detections, GTannotations, currlabel):
         """
         Description:
             Function processes detection boxes to count mispredictions and 
@@ -227,10 +257,10 @@ class Metrics(object):
                 maxIou = Ious[0, assignedGT]
                 if maxIou >= self.threshold and assignedGT not in detected_annotations:
                     detected_annotations.append(assignedGT)
-                    currCM[label, currlabel] +=1
+                    currCM[label, currlabel] += 1
         return currCM
-        
-    def calc_precision(self,truePositives, falsePositives):
+
+    def calc_precision(self, truePositives, falsePositives):
         """
         Description:
             Fuction computes precision
@@ -241,9 +271,11 @@ class Metrics(object):
         Returns:
             Precision metrics as float
         """
-        return truePositives / np.maximum(truePositives + falsePositives, np.finfo(np.float64).eps)
-        
-    def calc_recall(self,truePositives, nGT):
+        return truePositives / np.maximum(
+            truePositives + falsePositives, np.finfo(np.float64).eps
+        )
+
+    def calc_recall(self, truePositives, nGT):
         """
         Description:
             Fuction computes recall
@@ -254,11 +286,12 @@ class Metrics(object):
         Returns:
             Recall metrics as float
         """
-        return (truePositives/nGT)
-    
+        return truePositives / nGT
 
-    def recompute_ConfusionMatrix(self,tp,fp,num_annotations,label,currDet,currTrue,nothingness = False):
-        
+    def recompute_ConfusionMatrix(
+        self, tp, fp, num_annotations, label, currDet, currTrue, nothingness=False
+    ):
+
         """
         Description:
             Recomputes confusion matrix imagewise
@@ -275,12 +308,12 @@ class Metrics(object):
         """
         ############## Update current values into confusion Matrix ###############
         if nothingness:
-            fn  = num_annotations - tp
-            Updatesvals = zip([[label,label], [-1,label] , [label,-1]] , [tp,fp,fn])
+            fn = num_annotations - tp
+            Updatesvals = zip([[label, label], [-1, label], [label, -1]], [tp, fp, fn])
             self.confusionMatrix.updateCM(Updatesvals)
-        currCM = self.process_incorrect(currDet, currTrue , label)
+        currCM = self.process_incorrect(currDet, currTrue, label)
         self.confusionMatrix.updateincorrectpredictions(currCM)
-        
+
     def getCM(self):
         """
         Description:
@@ -290,4 +323,3 @@ class Metrics(object):
         
         """
         return self.confusionMatrix.CM
-        

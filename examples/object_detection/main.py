@@ -1,8 +1,14 @@
 from alectio_sdk.flask_wrapper import Pipeline
-from processes import train, test, infer,getdatasetstate
+from processes import train, test, infer, getdatasetstate
 
 # put the train/test/infer processes into the constructor
-app = Pipeline(name="coco", train_fn=train, test_fn=test, infer_fn=infer,getstate_fn= getdatasetstate)
+app = Pipeline(
+    name="coco",
+    train_fn=train,
+    test_fn=test,
+    infer_fn=infer,
+    getstate_fn=getdatasetstate,
+)
 
 
 if __name__ == "__main__":
@@ -15,5 +21,5 @@ if __name__ == "__main__":
         "type": "Object Detection",
     }
     app._one_loop(payload)
-    #app(debug=True)
-    #app.one_loop()
+    # app(debug=True)
+    # app.one_loop()

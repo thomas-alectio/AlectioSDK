@@ -15,7 +15,7 @@ from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 
 
 class Pipeline(object):
-    def __init__(self, name, train_fn, test_fn, infer_fn,getstate_fn):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn):
         self.app = Flask(name)
 
         self.train_fn = train_fn
@@ -35,23 +35,22 @@ class Pipeline(object):
 
     def one_loop(self):
         # Get payload args
-        
+
         payload = {
             "experiment_id": request.get_json()["experiment_id"],
             "project_id": request.get_json()["project_id"],
             "cur_loop": request.get_json()["cur_loop"],
             "user_id": request.get_json()["user_id"],
             "bucket_name": request.get_json()["bucket_name"],
-            "type": request.get_json()["type"]
+            "type": request.get_json()["type"],
         }
-        
+
         returned_payload = self._one_loop(payload)
-        backend_ip = self.config['backend_ip']
+        backend_ip = self.config["backend_ip"]
         port = 80
-        url = "".join(["http://",backend_ip,':{}'.format(port),'/end_of_task'])
-        r = requests.post(url=url,json=returned_payload)
-        return jsonify({"Message":"LoopComplete"}) 
-        
+        url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
+        r = requests.post(url=url, json=returned_payload)
+        return jsonify({"Message": "LoopComplete"})
 
     def _one_loop(self, payload):
         """ Execute one loop of active learning """
@@ -93,8 +92,9 @@ class Pipeline(object):
         if self.cur_loop == 0:
             self.resume_from = None
             state_json = self.getstate_fn()
-            object_key = os.path.join(self.expt_dir, "data_map.pkl".format(self.cur_loop)
-                                    )
+            object_key = os.path.join(
+                self.expt_dir, "data_map.pkl".format(self.cur_loop)
+            )
             self.client.write(state_json, self.bucket_name, object_key, "pickle")
         else:
             self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
@@ -105,9 +105,9 @@ class Pipeline(object):
         self.test()
         self.infer()
         # Drop unwanted payload values
-        del payload['type']
-        del payload['cur_loop']
-        del payload['bucket_name']
+        del payload["type"]
+        del payload["cur_loop"]
+        del payload["bucket_name"]
         return payload
 
     def train(self):

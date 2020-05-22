@@ -1,5 +1,6 @@
 import torch
 
+
 def box_area(boxes):
     """
     Computes the area of a set of bounding boxes, which are specified by its
@@ -61,11 +62,17 @@ def cxcy_to_xy(cxcy):
     -------
         bounding boxes in boundary coordinates, a tensor of size (n_boxes, 4)
     """
-    return torch.cat([cxcy[:, :2] - (cxcy[:, 2:] / 2),  # x_min, y_min
-                      cxcy[:, :2] + (cxcy[:, 2:] / 2)], 1)  # x_max, y_max
+    return torch.cat(
+        [
+            cxcy[:, :2] - (cxcy[:, 2:] / 2),  # x_min, y_min
+            cxcy[:, :2] + (cxcy[:, 2:] / 2),
+        ],
+        1,
+    )  # x_max, y_max
+
 
 def batched_cxcy_to_xy(cxcy):
-    '''Batched version of cxcy_to_xy
+    """Batched version of cxcy_to_xy
     
     Parameters:
     -----------
@@ -75,9 +82,11 @@ def batched_cxcy_to_xy(cxcy):
     Return:
     -------
         batched bboxes in xyxy format
-    '''
-    return torch.cat([cxcy[:,:,:2] - (cxcy[:,:,2:]/2), 
-                      cxcy[:,:,:2] + (cxcy[:,:,2:]/2)], dim=2)
+    """
+    return torch.cat(
+        [cxcy[:, :, :2] - (cxcy[:, :, 2:] / 2), cxcy[:, :, :2] + (cxcy[:, :, 2:] / 2)],
+        dim=2,
+    )
 
 
 # implementation from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py
@@ -96,8 +105,9 @@ def xy_to_cxcy(xy):
          bounding boxes in center-size coordinates (cxcy convention), 
          a tensor of size (n_boxes, 4)
     """
-    return torch.cat([(xy[:, 2:] + xy[:, :2]) / 2,  # c_x, c_y
-                      xy[:, 2:] - xy[:, :2]], 1)  # w, h
+    return torch.cat(
+        [(xy[:, 2:] + xy[:, :2]) / 2, xy[:, 2:] - xy[:, :2]], 1  # c_x, c_y
+    )  # w, h
 
 
 # implementation from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py
@@ -111,11 +121,17 @@ def gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
     :return: decoded bounding boxes in center-size form, a tensor of size (n_priors, 4)
     """
 
-    return torch.cat([gcxgcy[:, :2] * priors_cxcy[:, 2:] / 10 + priors_cxcy[:, :2],  # c_x, c_y
-                      torch.exp(gcxgcy[:, 2:] / 5) * priors_cxcy[:, 2:]], 1)  # w, h
+    return torch.cat(
+        [
+            gcxgcy[:, :2] * priors_cxcy[:, 2:] / 10 + priors_cxcy[:, :2],  # c_x, c_y
+            torch.exp(gcxgcy[:, 2:] / 5) * priors_cxcy[:, 2:],
+        ],
+        1,
+    )  # w, h
+
 
 def batched_gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
-    '''Batched version of gcxgcy_to_cxcy
+    """Batched version of gcxgcy_to_cxcy
     
     Parameters:
     -----------
@@ -139,16 +155,19 @@ def batched_gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
             n_priors: number of priors
             each prior shoud follow cxcy format
 
-    '''
-    #print("gcxgcy.type ", gcxgcy.type())
-    #print("priors_cxcy.type ", priors_cxcy.type())
+    """
+    # print("gcxgcy.type ", gcxgcy.type())
+    # print("priors_cxcy.type ", priors_cxcy.type())
     if torch.cuda.is_available():
-        priors_cxcy = priors_cxcy.cuda() 
-    return torch.cat([
-        gcxgcy[:,:,:2]*priors_cxcy[:,:,2:]/10 + priors_cxcy[:,:,:2],
-        gcxgcy[:,:,2:]*torch.exp(priors_cxcy[:,:,2:]/5)], dim=2)
+        priors_cxcy = priors_cxcy.cuda()
+    return torch.cat(
+        [
+            gcxgcy[:, :, :2] * priors_cxcy[:, :, 2:] / 10 + priors_cxcy[:, :, :2],
+            gcxgcy[:, :, 2:] * torch.exp(priors_cxcy[:, :, 2:] / 5),
+        ],
+        dim=2,
+    )
 
-    
 
 def cxcy_to_gcxgcy(cxcy, priors_cxcy):
     """
@@ -174,5 +193,11 @@ def cxcy_to_gcxgcy(cxcy, priors_cxcy):
     # The 10 and 5 below are referred to as 'variances' in the original Caffe repo, completely empirical
     # They are for some sort of numerical conditioning, for 'scaling the localization gradient'
     # See https://github.com/weiliu89/caffe/issues/155
-    return torch.cat([(cxcy[:, :2] - priors_cxcy[:, :2]) / (priors_cxcy[:, 2:] / 10),  # g_c_x, g_c_y
-                      torch.log(cxcy[:, 2:] / priors_cxcy[:, 2:]) * 5], 1)  # g_w, g_h
+    return torch.cat(
+        [
+            (cxcy[:, :2] - priors_cxcy[:, :2])
+            / (priors_cxcy[:, 2:] / 10),  # g_c_x, g_c_y
+            torch.log(cxcy[:, 2:] / priors_cxcy[:, 2:]) * 5,
+        ],
+        1,
+    )  # g_w, g_h

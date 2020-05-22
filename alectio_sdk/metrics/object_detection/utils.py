@@ -32,15 +32,22 @@ def compute_iou(detBoxes, GTBoxes):
     iw = np.maximum(iw, 0)
     ih = np.maximum(ih, 0)
 
-    ua = np.expand_dims((detBoxes[:, 2] - detBoxes[:, 0]) * (detBoxes[:, 3] - detBoxes[:, 1]), axis=1) + area - iw * ih
+    ua = (
+        np.expand_dims(
+            (detBoxes[:, 2] - detBoxes[:, 0]) * (detBoxes[:, 3] - detBoxes[:, 1]),
+            axis=1,
+        )
+        + area
+        - iw * ih
+    )
 
     ua = np.maximum(ua, np.finfo(float).eps)
 
     intersection = iw * ih
 
     return intersection / ua
-    
-    
+
+
 def compute_ap(recall, precision):
     """ 
     Description:
@@ -64,6 +71,3 @@ def compute_ap(recall, precision):
     # and sum (\Delta recall) * prec
     ap = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
     return ap
-
-
-

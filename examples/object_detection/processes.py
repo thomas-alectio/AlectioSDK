@@ -117,8 +117,8 @@ def train(labeled, resume_from, ckpt_file):
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    #ckpt = torch.load(os.path.join(env.WEIGHTS_DIR, 'yolov3-tiny-prn.weights'))
-    #model.load_state_dict(ckpt["model"])
+    # ckpt = torch.load(os.path.join(env.WEIGHTS_DIR, 'yolov3-tiny-prn.weights'))
+    # model.load_state_dict(ckpt["model"])
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # resume model and optimizer from previous loop
@@ -128,7 +128,6 @@ def train(labeled, resume_from, ckpt_file):
         optimizer.load_state_dict(ckpt["optimizer"])
     else:
         getdatasetstate()
-        
 
     # loss function
     priors = anchors.normalize("xyxy")
@@ -355,17 +354,18 @@ def infer(unlabeled, ckpt_file):
 
 
 def getdatasetstate():
-    dataset    = FolderWithPaths(env.TRAINDATA_DIR)
-    dataset.transform = tv.transforms.Compose([tv.transforms.RandomCrop(32),tv.transforms.ToTensor()])
+    dataset = FolderWithPaths(env.TRAINDATA_DIR)
+    dataset.transform = tv.transforms.Compose(
+        [tv.transforms.RandomCrop(32), tv.transforms.ToTensor()]
+    )
     trainpath = {}
-    batchsize =1
-    loader = DataLoader(dataset,batch_size = batchsize, num_workers=2, shuffle = False)
-    for i,(_,_,paths)  in enumerate(loader):
+    batchsize = 1
+    loader = DataLoader(dataset, batch_size=batchsize, num_workers=2, shuffle=False)
+    for i, (_, _, paths) in enumerate(loader):
         for path in paths:
-            if 'train' in path:
-                trainpath[i] =path
+            if "train" in path:
+                trainpath[i] = path
     return trainpath
-    
 
 
 if __name__ == "__main__":
@@ -378,4 +378,3 @@ if __name__ == "__main__":
     logdir = "test"
 
     train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
-    

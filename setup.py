@@ -15,8 +15,9 @@ setuptools.setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: Anything in favor of us",
-        "Operating System :: Linux"],
-    python_requires='>=3.6',
-    package_data={'': ['config.json']},
-    include_package_data=True)
-
+        "Operating System :: Linux",
+    ],
+    python_requires=">=3.6",
+    package_data={"": ["config.json"]},
+    include_package_data=True,
+)
