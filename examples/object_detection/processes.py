@@ -106,9 +106,9 @@ def bbox_transform(batched_prediction):
 def train(labeled, resume_from, ckpt_file):
     # hyperparameters
     batch_size = 16
-    epochs = 2  # just for demo
     lr = 1e-2
     weight_decay = 1e-2
+    epochs = 30
 
     coco = COCO(env.DATA_DIR, Transforms(), samples=labeled, train=True)
     loader = DataLoader(
@@ -134,54 +134,58 @@ def train(labeled, resume_from, ckpt_file):
     loss_fn = HardNegativeMultiBoxesLoss(priors, device=device)
 
     model.train()
-    for img, boxes, labels in tqdm(loader, desc="Training"):
-        img = img.to(device)
+    for epoch in tqdm(range(epochs), desc="Training"):
+        for img, boxes, labels in loader:
+            img = img.to(device)
 
-        # 3 predictions from 3 yolo layers
-        output = model(img)
+            # 3 predictions from 3 yolo layers
+            output = model(img)
 
-        # batch predictions on each image
-        batched_prediction = []
-        for p in output:  # (bacth_size, 3, gx, gy, 85)
-            batch_size = p.shape[0]
-            p = p.view(batch_size, -1, 85)
+            # batch predictions on each image
+            batched_prediction = []
+            for p in output:  # (bacth_size, 3, gx, gy, 85)
+                batch_size = p.shape[0]
+                p = p.view(batch_size, -1, 85)
 
-            batched_prediction.append(p)
+                batched_prediction.append(p)
 
-        batched_prediction = torch.cat(batched_prediction, dim=1)
-        # (batch_size, n_priors, 85)
+            batched_prediction = torch.cat(batched_prediction, dim=1)
+            
+            '''
+            (batch_size, n_priors, 85)
 
-        # the last dim of batched_prediction represent the predicted box
-        # batched_prediction[...,:4] is the coordinate of the predicted bbox
-        # batched_prediction[...,4] is the objectness score
-        # batched_prediction[...,5:] is the pre-softmax class distribution
+            the last dim of batched_prediction represent the predicted box
+            batched_prediction[...,:4] is the coordinate of the predicted bbox
+            batched_prediction[...,4] is the objectness score
+            batched_prediction[...,5:] is the pre-softmax class distribution
 
-        # we need to apply some transforms to the those predictions
-        # before we can use HardNegativeMultiBoxesLoss
-        # In particular, the predicted bbox need to be relative to
-        # normalized anchor priors
-        # we will define another function bbox_transform
-        # to do those transform, since it will be used by other processes
-        # as well.
-        # see documentation on HardNegativeMultiBoxesLoss
-        # on its input parameters
+            we need to apply some transforms to the those predictions
+            before we can use HardNegativeMultiBoxesLoss
+            In particular, the predicted bbox need to be relative to
+            normalized anchor priors
+            we will define another function bbox_transform
+            to do those transform, since it will be used by other processes
+            as well.
+            see documentation on HardNegativeMultiBoxesLoss
+            on its input parameters
+            '''
 
-        predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
-            batched_prediction
-        )
+            predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
+                batched_prediction
+            )
 
-        loss = loss_fn(
-            predicted_boxes, predicted_objectness, predicted_class_dist, boxes, labels
-        )
+            loss = loss_fn(
+                predicted_boxes, predicted_objectness, predicted_class_dist, boxes, labels
+            )
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-    # save ckpt for this loop
-    ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
-
-    torch.save(ckpt, os.path.join(env.EXPT_DIR, ckpt_file))
+        # save ckpt for this loop depending on save_every
+        ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
+        torch.save(ckpt, os.path.join(env.EXPT_DIR, ckpt_file))
+        
     return
 
 
