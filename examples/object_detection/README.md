@@ -35,7 +35,7 @@ pip install -r requirements.txt
 Create a data directory in the current directory and download the data.
 
 ```
-sh download_datasets.sh
+sh download_data.sh
 ```
 
 Please note that to run the above command, you need to first [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
