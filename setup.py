@@ -18,4 +18,6 @@ setuptools.setup(
         "Operating System :: Linux",
     ],
     python_requires=">=3.6",
+    package_data={"": ["config.json"]},
+    include_package_data=True
 )
