@@ -13,13 +13,12 @@ app = Pipeline(
 if __name__ == "__main__":
     
     # SAMPLE PAYLOAD
-    # payload = {
-    #     "project_id": "1df477769a4211eaa6da3af9d318993f",
-    #     "user_id": "8a90a570972811eaad5238c986352c36",
-    #     "experiment_id": "e4cd22449a4211eaa6da3af9d318993f",
-    #     "bucket_name": "alectio-demo",
-    #     "cur_loop": 0,
-    # }
+    # payload = {  "project_id": "adbc569e9c9511ea84dd0242ac110002",
+    #             "experiment_id": "cb09a5809c9511eaa1bf0242ac110002", 
+    #             "cur_loop": 0,
+    #             "user_id": "8a90a570972811eaad5238c986352c36",
+    #             "type": "Classification", 
+    #             "bucket_name": "alectio-demo"}
     
     # app._one_loop(payload)
     app(debug=True)

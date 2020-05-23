@@ -23,11 +23,12 @@ def train(labeled, resume_from, ckpt_file):
     batch_size = 16
     lr = 1e-2
     weight_decay = 1e-2
-    epochs = 1 # just for demo
+    epochs = 10 # just for demo
 
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2)
-    
+    trainset = Subset(trainset, labeled)
+    trainloader = torch.utils.data.DataLoader(trainset, batch_size=batch_size, shuffle=False, num_workers=2)
+
     net = Net().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=weight_decay)
@@ -40,7 +41,7 @@ def train(labeled, resume_from, ckpt_file):
         getdatasetstate()
 
     net.train()
-    for epoch in tqdm(range(epochs)):
+    for epoch in tqdm(range(epochs), desc='Training'):
         running_loss = 0.0
         for i, data in enumerate(trainloader):
             images, labels = data
