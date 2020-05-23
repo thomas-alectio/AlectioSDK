@@ -4,7 +4,7 @@ from processes import train, test, infer, getdatasetstate
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--expname", type=str, help="Experiment name")
+parser.add_argument("--expname", type=str,default ='AlectioSDK',help="Experiment name")
 args = parser.parse_args()
 
 # put the train/test/infer processes into the constructor
