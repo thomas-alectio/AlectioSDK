@@ -13,7 +13,7 @@ And we will use yolo-v3 as the model.
 
 *** All of the following steps assume that your terminal points to the current directory, i.e. `./examples/object_detection` ***
 
-### 1. Set up a virtual environment and install Alection SDK
+### 1. Set up a virtual environment and install Alectio SDK
 Before getting started, please make sure you completed the [initial installation instructions](../../README.md) to set-up your environment.
 
 To recap, the steps were setting up a virtual environment and then installing the AlectioSDK in that environment.
