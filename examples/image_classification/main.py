@@ -3,7 +3,7 @@ from processes import train, test, infer, getdatasetstate
 
 # put the train/test/infer processes into the constructor
 app = Pipeline(
-    name="coco",
+    name="cifar10",
     train_fn=train,
     test_fn=test,
     infer_fn=infer,
@@ -19,9 +19,7 @@ if __name__ == "__main__":
     #     "experiment_id": "e4cd22449a4211eaa6da3af9d318993f",
     #     "bucket_name": "alectio-demo",
     #     "cur_loop": 0,
-    #     "type": "Object Detection",
     # }
     
     # app._one_loop(payload)
-    
     app(debug=True)
