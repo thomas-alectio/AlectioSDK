@@ -15,8 +15,11 @@ import pickle
 
 from dataset import TEXT, LABEL, DailyDialog, entire_data
 from model import RNN
-import envs
 
+DEVICE = os.getenv("DEVICE")
+VECTOR_DIR = os.getenv("VECTOR_DIR")
+DATA_DIR = os.getenv("DATA_DIR")
+EXPT_DIR = os.getenv("EXPT_DIR")
 
 # initialize the model
 INPUT_DIM = len(TEXT.vocab)
@@ -92,7 +95,7 @@ def train(payload):
 
     # resume model and optimizer from ckpt of the previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(envs.EXPT_DIR, resume_from))
+        ckpt = torch.load(os.path.join(EXPT_DIR, resume_from))
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
 
@@ -103,7 +106,7 @@ def train(payload):
     labeled = [int(ix) for ix in labeled]
 
     dstr = DailyDialog(
-        path=os.path.join(envs.DATA_DIR, "train.json"),
+        path=os.path.join(DATA_DIR, "train.json"),
         text_field=TEXT,
         label_field=LABEL,
         samples=labeled,
@@ -113,7 +116,7 @@ def train(payload):
     ldtr = data.BucketIterator(
         dstr,
         batch_size=batch_size,
-        device=envs.DEVICE,
+        device=DEVICE,
         shuffle=True,
         sort_key=lambda x: len(x.text),
         sort_within_batch=True,
@@ -123,7 +126,7 @@ def train(payload):
     model.train()
 
     # log the epoch performance for further analysis
-    writer = SummaryWriter(envs.EXPT_DIR)
+    writer = SummaryWriter(EXPT_DIR)
 
     steps = 0
     for epoch in range(epochs):
@@ -153,7 +156,7 @@ def train(payload):
 
         # save ckpt every epoch
         ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
-        torch.save(ckpt, os.path.join(envs.EXPT_DIR, ckpt_file))
+        torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
 
     writer.close()
     return
@@ -178,7 +181,7 @@ def test(payload):
 
     # create test set
     dsts = DailyDialog(
-        path=os.path.join(envs.DATA_DIR, "test.json"),
+        path=os.path.join(DATA_DIR, "test.json"),
         text_field=TEXT,
         label_field=LABEL,
         samples=None,
@@ -190,7 +193,7 @@ def test(payload):
     # use a regular data loader without sorting samples according to its length
     # this is because we need to build a dictionary of data index and its prediction
     # so we cannot disrupt the order
-    ldts = data.Iterator(dsts, batch_size=batch_size, device=envs.DEVICE, shuffle=False)
+    ldts = data.Iterator(dsts, batch_size=batch_size, device=DEVICE, shuffle=False)
 
     # ground-truth labels and predictions
     lbs, prd = [], []
@@ -237,12 +240,12 @@ def infer(payload):
     ckpt_file = payload["ckpt_file"]
 
     # load model state dict
-    ckpt = torch.load(os.path.join(envs.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     # create dataset
     dsinf = DailyDialog(
-        path=os.path.join(envs.DATA_DIR, "train.json"),
+        path=os.path.join(DATA_DIR, "train.json"),
         text_field=TEXT,
         label_field=LABEL,
         samples=unlabeled,
@@ -254,9 +257,7 @@ def infer(payload):
     # use a regular data loader without sorting samples according to its length
     # this is because we need to build a dictionary of data index and its output
     # so we cannot disrupt the order
-    ldinf = data.Iterator(
-        dsinf, batch_size=batch_size, device=envs.DEVICE, shuffle=False
-    )
+    ldinf = data.Iterator(dsinf, batch_size=batch_size, device=DEVICE, shuffle=False)
 
     outputs = None
     model.eval()

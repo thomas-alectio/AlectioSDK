@@ -8,7 +8,7 @@ setuptools.setup(
     version="0.0.1",
     author="Alectio",
     author_email="admin@alectio.com",
-    description="Integrate customer side ML application with Alectio Platform",
+    description="Integrate customer side ML application with the Alectio Platform",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
