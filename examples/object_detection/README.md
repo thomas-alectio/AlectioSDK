@@ -37,14 +37,17 @@ First we need to [configure the aws cli](https://docs.aws.amazon.com/cli/latest/
 ```
 aws configure
 ```
-
-Next, you can create a data directory in the current directory and download the data.
+and adding your AWS credentials. Next, you can create a data and a log directory in the current directory and download the data via:
 
 ```
-sh download_data.sh
+mkdir data
+mkdir log
+cd data
+aws s3 cp s3://alectio-resources/cocosamples . --recursive
+cd ..
 ```
 
-and adding your AWS credentials. For most part the data is preprocessed according to the Darknet convention. The only difference is that we use `xyxy` for ground-truth bounding box.
+For most part the data is preprocessed according to the Darknet convention. The only difference is that we use the `xyxy` format for the ground-truth bounding boxes.
 
 ### 3. Build Train Process
 We will train a [Darknet yolov3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) for

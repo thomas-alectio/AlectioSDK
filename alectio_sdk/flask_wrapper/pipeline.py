@@ -13,6 +13,7 @@ from copy import deepcopy
 from .s3_client import S3Client
 from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 
+
 class Pipeline(object):
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn):
         self.app = Flask(name)
