@@ -1,15 +1,13 @@
-from dataset import COCO, Transforms, collate_fn
-from model import Darknet
-
+import torchvision as tv
+import env
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+from dataset import COCO, Transforms, collate_fn
+from model import Darknet
 from torch.utils.data import DataLoader
-import torchvision as tv
-
-import os
 from tqdm import tqdm
-
 from alectio_sdk.torch_utils.loss import HardNegativeMultiBoxesLoss
 from alectio_sdk.torch_utils.utils import Anchors, batched_gcxgcy_to_cxcy
 from alectio_sdk.torch_utils.utils import batched_cxcy_to_xy
