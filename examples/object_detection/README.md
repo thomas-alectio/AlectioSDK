@@ -32,16 +32,18 @@ pip install -r requirements.txt
 ```
 
 ### 3. Download Pre-Processed Data
-Create a data directory in the current directory and download the data.
+
+First we need to [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
+```
+aws configure
+```
+
+Next, you can create a data directory in the current directory and download the data.
 
 ```
 sh download_data.sh
 ```
 
-Please note that to run the above command, you need to first [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
-```
-aws configure
-```
 and adding your AWS credentials. For most part the data is preprocessed according to the Darknet convention. The only difference is that we use `xyxy` for ground-truth bounding box.
 
 ### 3. Build Train Process
