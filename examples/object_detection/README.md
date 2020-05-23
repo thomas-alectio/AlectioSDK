@@ -47,7 +47,7 @@ aws s3 cp s3://alectio-resources/cocosamples . --recursive
 cd ..
 ```
 
-For most part the data is preprocessed according to the Darknet convention. The only difference is that we use `xyxy` for ground-truth bounding box.
+For most part the data is preprocessed according to the Darknet convention. The only difference is that we use the `xyxy` format for the ground-truth bounding boxes.
 
 ### 3. Build Train Process
 We will train a [Darknet yolov3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) for
