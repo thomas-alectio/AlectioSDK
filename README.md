@@ -1,8 +1,8 @@
 # Alectio SDK
 
 AlectioSDK is a package that enables developers to build an ML pipeline as a Flask app to interact with Alectio's
-platform. 
-It is designed for Alectio's clients, who prefer to keep their model and data on their on server. 
+platform.
+It is designed for Alectio's clients, who prefer to keep their model and data on their on server.
 
 The package is currently under active development. More functionalities that aim to enhance robustness will be added soon, but for now the package provides a class `alectio_sdk.flask_wrapper.Pipeline` that inferfaces with customer-side
 processes in a consistent manner. Customers need to implement 3 processes as python functions:
@@ -18,83 +18,83 @@ The logic for training the model should be implemented in this process. The func
 def train(payload):
     # get indices of the data to be trained
     labeled = payload['labeled']
-    
+
     # get checkpoint to resume from
     resume_from = payload['resume_from']
-    
+
     # get checkout to save for this loop
     ckpt_file = payload['ckpt_file']
-    
+
     # implement your logic to train the model
     # with the selected data indexed by `labeled`
     return
-    
+
 ```
 
-The name of the function can be anything you like. It takes an argument `payload`, which is a 
+The name of the function can be anything you like. It takes an argument `payload`, which is a
 dictionary with 3 keys
 
 | key | value |
 | --- | ----- |
 | resume_from | a string that specifies which checkpoint to resume from |
 | ckpt_file | a string that specifies the name of checkpoint to be saved for the current loop |
-| labeled | a list of indices of selected samples used to train the model in this loop | 
+| labeled | a list of indices of selected samples used to train the model in this loop |
 
 Depending on your situation, the samples indicated in `labeled` might not be labeled (despite the variable
-name). We call it `labeled` because in the active learning setting, this list represents the pool of 
-samples iteratively labeled by the human oracle. 
+name). We call it `labeled` because in the active learning setting, this list represents the pool of
+samples iteratively labeled by the human oracle.
 
 
 ### Test the Model
-The logic for testing the model should be implemented in this process. The function representing this 
+The logic for testing the model should be implemented in this process. The function representing this
 process should look like:
 
 ```python
 def test(payload):
     # the checkpoint to test
     ckpt_file = payload['ckpt_file']
-    
+
     # implement your testing logic here
-    
-    
-    # put the predictions and labels into 
+
+
+    # put the predictions and labels into
     # two dictionaries
-    
+
     # lbs <- dictionary of indices of test data and their ground-truth
-    
+
     # prd <- dictionary of indices of test data and their prediction
-    
+
     return {'predictions': prd, 'labels': lbs}
 ```
 The test function takes an argument `payload`, which is a dictionary with 1 key
 
 | key | value |
-| --- | ----- | 
-| ckpt_file | a string that specifies which checkpoint to test | 
+| --- | ----- |
+| ckpt_file | a string that specifies which checkpoint to test |
 
 The test function needs to return a dictionary with two keys
 
 | key | value |
-| --- | ----- | 
+| --- | ----- |
 | predictions | a dictionary of an index and a prediction for each test sample|
 | labels | a dictionary of an index and a ground truth label for each test sample|
 
 The format of the values depends on the type of ML problem. Please refer to the [examples](./examples) directory for details.
 
 ## Apply Inference
-The logic for applying the model to infer on the unlabeled data should be implemented in this process. 
+The logic for applying the model to infer on the unlabeled data should be implemented in this process.
 The function representing this process should look like:
 ```python
 def infer(payload):
     # get the indices of unlabeled data
     unlabeled = payload['unlabeled']
-    
+
     # get the checkpoint file to be used for applying inference
     ckpt_file = payload['ckpt_file']
-    
+
     # implement your inference logic here
-    
-    
+
+
     # outputs <- save the output from the model on the unlabeled data as a dictionary
     return {'outputs': outputs}
 ```
@@ -102,24 +102,24 @@ def infer(payload):
 The infer function takes an argument `payload`, which is a dictionary with 2 keys:
 
 | key | value |
-| --- | ----  | 
-| ckpt_file | a string that specifies which checkpoint to use to infer on the unlabeled data | 
+| --- | ----  |
+| ckpt_file | a string that specifies which checkpoint to use to infer on the unlabeled data |
 | unlabeled | a list of of indices of unlabeled data in the training set |
 
 
 The `infer` function needs to return a dictionary with one key
 
 | key | value |
-| --- | ----- | 
+| --- | ----- |
 | outputs | a dictionary of indexes mapped to the models output before an activation function is applied |
 
-For example, if it is a classification problem, return the output **before** applying softmax. 
-For more details about the format of the output, please refer to the [examples](./examples) directory. 
+For example, if it is a classification problem, return the output **before** applying softmax.
+For more details about the format of the output, please refer to the [examples](./examples) directory.
 
 ## Installation
 
-### 1. Set up a virtual environment 
-We recommend to set-up a virtual environment. 
+### 1. Set up a virtual environment
+We recommend to set-up a virtual environment.
 
 For example, you can use python's built-in virtual environment via:
 

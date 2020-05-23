@@ -5,7 +5,7 @@ def box_area(boxes):
     """
     Computes the area of a set of bounding boxes, which are specified by its
     boundary coordinates (xyxy-convention)
-    
+
     Arguments:
     ----------
         boxes (Tensor[N, 4]): boxes for which the area will be computed. They
@@ -24,12 +24,12 @@ def box_iou(boxes1, boxes2):
     Return intersection-over-union (Jaccard index) of boxes.
     Both sets of boxes are expected to be in boundary coordinates.
     (xyxy-convention)
-    
+
     Arguments:
     ----------
         boxes1 (Tensor[N, 4])
         boxes2 (Tensor[M, 4])
-        
+
     Returns:
     --------
         iou (Tensor[N, M]): the NxM matrix containing the pairwise
@@ -51,14 +51,14 @@ def box_iou(boxes1, boxes2):
 # implementation from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py
 def cxcy_to_xy(cxcy):
     """
-    Convert bounding boxes from center-size coordinates 
+    Convert bounding boxes from center-size coordinates
     (cx, cy, w, h) to boundary coordinates (x_min, y_min, x_max, y_max).
-    
+
     Paramters:
     ----------
         cxcy: bounding boxes in center-size coordinates, a tensor of size (n_boxes, 4)
-        
-    Returns: 
+
+    Returns:
     -------
         bounding boxes in boundary coordinates, a tensor of size (n_boxes, 4)
     """
@@ -73,12 +73,12 @@ def cxcy_to_xy(cxcy):
 
 def batched_cxcy_to_xy(cxcy):
     """Batched version of cxcy_to_xy
-    
+
     Parameters:
     -----------
         cxcy: a tensor of shape (N, n_priors, 4)
             batched bboxes in cxcy format
-    
+
     Return:
     -------
         batched bboxes in xyxy format
@@ -92,17 +92,17 @@ def batched_cxcy_to_xy(cxcy):
 # implementation from https://github.com/sgrvinod/a-PyTorch-Tutorial-to-Object-Detection/blob/master/utils.py
 def xy_to_cxcy(xy):
     """
-    Convert bounding boxes from boundary coordinates (x_min, y_min, x_max, y_max) 
+    Convert bounding boxes from boundary coordinates (x_min, y_min, x_max, y_max)
     to center-size coordinates (c_x, c_y, w, h).
-    
+
     Paramters:
     ----------
        xy: bounding boxes in boundary coordinates (xyxy convention),
        a tensor of size (n_boxes, 4)
-    
+
     Return:
     -------
-         bounding boxes in center-size coordinates (cxcy convention), 
+         bounding boxes in center-size coordinates (cxcy convention),
          a tensor of size (n_boxes, 4)
     """
     return torch.cat(
@@ -132,23 +132,23 @@ def gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
 
 def batched_gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
     """Batched version of gcxgcy_to_cxcy
-    
+
     Parameters:
     -----------
         gcxgcy: a tensor of shape (N, n_priors, 4)
-            predicted boxes in batch in log space relative to 
-            the anchor priors 
-            
+            predicted boxes in batch in log space relative to
+            the anchor priors
+
             N: the batch size
             n_priors: number of anchor priors on each image
             format of box is [gcx, gcy, pw, ph]
-            
+
             gcx * w/10 + pcx = cx
             gcy * h/10 + pcy = cy
             pw * e^{gw/5} = w
             ph * e^{gh/5} = h
-            
-        
+
+
         priors_cxcy: a tensor of shape (N, n_priors, 4)
             pregenerated anchor priors in batch
             N: the batch size
@@ -158,7 +158,8 @@ def batched_gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
     """
     # print("gcxgcy.type ", gcxgcy.type())
     # print("priors_cxcy.type ", priors_cxcy.type())
-    priors_cxcy = priors_cxcy.cuda()
+    if torch.cuda.is_available():
+        priors_cxcy = priors_cxcy.cuda()
     return torch.cat(
         [
             gcxgcy[:, :, :2] * priors_cxcy[:, :, 2:] / 10 + priors_cxcy[:, :, :2],
@@ -170,21 +171,21 @@ def batched_gcxgcy_to_cxcy(gcxgcy, priors_cxcy):
 
 def cxcy_to_gcxgcy(cxcy, priors_cxcy):
     """
-    Encode bounding boxes (that are in center-size form) 
+    Encode bounding boxes (that are in center-size form)
     w.r.t. the corresponding prior boxes (that are in center-size form).
-    For the center coordinates, find the offset with respect to the prior box, 
+    For the center coordinates, find the offset with respect to the prior box,
     and scale by the size of the prior box.
     For the size coordinates, scale by the size of the prior box, and convert to the log-space.
     In the model, we are predicting bounding box coordinates in this encoded form.
-    
+
     Parameters:
     -----------
         cxcy: bounding boxes in center-size coordinates, a tensor of size (n_priors, 4)
-        priors_cxcy: prior boxes with respect to which the encoding must be performed, 
+        priors_cxcy: prior boxes with respect to which the encoding must be performed,
             a tensor of size (n_priors, 4)
-    
-    
-    Return: 
+
+
+    Return:
     -------
         encoded bounding boxes, a tensor of size (n_priors, 4)
     """

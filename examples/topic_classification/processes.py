@@ -51,24 +51,24 @@ def accuracy(outputs, targets):
 
 def train(payload):
     """Train the model and save the checkpoint
-    
+
     payload: the payload object received from the http call
-        from the Alectio Platform. 
+        from the Alectio Platform.
         It is parsed as an immutable dictionary with 3 keys
-        
+
         labeled: list
             indices of training data to be used for this active learning loop
-        
+
         resume_from: str
-            checkpoint file to resume from. For example, in loop n 
-            of active learning, the value of this key is `ckpt_(n-1)`, 
+            checkpoint file to resume from. For example, in loop n
+            of active learning, the value of this key is `ckpt_(n-1)`,
             indicating that you should resume from checkpoint saved in loop n-1
-        
+
         ckpt_file: str
-            checkpoint file to save. For example, in loop n of active 
-            learing, the value of this key is `ckpt_n`, i.e. you 
-            should save the model checkpoint as `ckpt_n` in your log directory
-    
+            checkpoint file to save. For example, in loop n of active
+            learing, the value of this key is `ckpt_n`, i.e. you
+            should save the model ckeckpoint as `ckpt_n` in your log directory
+
     """
 
     # which checkpoint to resume from
@@ -161,14 +161,14 @@ def train(payload):
 
 def test(payload):
     """Test the model and return the predictions and ground-truth
-    
+
     payload: the payload object received from the http call
-        from the Alectio Platform. 
+        from the Alectio Platform.
         It is parsed as an immutable dictionary with 1 key
-        
+
         ckpt_file: str
             The model checkpoint file to be tested. For example,
-            in loop n of active learning, the value of this key is 
+            in loop n of active learning, the value of this key is
             `ckpt_n`, indicating that you should load your model
             from `ckpt_n` in the log directory and test it
     """
@@ -214,18 +214,18 @@ def test(payload):
 
 def infer(payload):
     """Use the model to infer on the unlabeled data and return the output
-    
+
     payload: the payload object received from the http call
-        from the Alectio Platform. 
+        from the Alectio Platform.
         It is parsed as an immutable dictionary with 2 keys
-        
+
         ckpt_file: str
-            The checkpoint file to use to apply inference. 
+            The checkpoint file to use to apply inference.
             For example, in loop n of active learning, the
             value of this key is `ckpt_n`. It means you should
             load `ckpt_n` from the log directory to your model
             for inference.
-            
+
         unlabeled: list
             indices of the data in the training set to be used
             for inference

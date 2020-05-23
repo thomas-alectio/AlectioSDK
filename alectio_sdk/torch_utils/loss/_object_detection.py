@@ -9,70 +9,70 @@ from ..utils import box_iou
 
 class HardNegativeMultiBoxesLoss(nn.Module):
     """Loss function for object detection
-    
+
     This loss function computes the loss for bounding box regression and
-    cross entropy loss for predicted objects. Loss for the background are 
-    computed via hard-negative mining to avoid overwhelm the loss with background 
-    class. 
-    
+    cross entropy loss for predicted objects. Loss for the background are
+    computed via hard-negative mining to avoid overwhelm the loss with background
+    class.
+
     Parameters:
     -----------
         anchor_priors: Normalized bounding box in xyxy convention.
             prior anchor boxes on each image. Underlying data is a
             a tensor of shape (P, 4), where P denotes the total number
-            of prior anchor boxes on each image. 
+            of prior anchor boxes on each image.
             The bounding boxes should follow cxcy convention
-    
+
     Keyword Args:
     -------------
         neg_to_pos: int. Default 3
             number of negative priors to positive priors when computing loss.
-            For example, if neg_to_pos is N, then for loss of m positive priors 
-            (prior that contains an object) on each image, 
+            For example, if neg_to_pos is N, then for loss of m positive priors
+            (prior that contains an object) on each image,
             we include loss of N*m hardest negative priors
-        
+
         alpha: float. Default 1.0
             weights of bounding box regression error
-        
-        
+
+
     Shapes:
     -------
     predicted_boxes: tensor of shape (N, n, 4) (N: batch size, n: number of anchor boxes priors on each image)
-        Predicted bounding boxes with respect to the anchor priors. 
-        Let [px, py, pw, ph] be the predicted boxes relative to the anchor prior 
+        Predicted bounding boxes with respect to the anchor priors.
+        Let [px, py, pw, ph] be the predicted boxes relative to the anchor prior
         [acx, acy, aw, ah] (in cxcy convention)
-        Then the actual bounding box [px, py, pw, ph] represents is 
+        Then the actual bounding box [px, py, pw, ph] represents is
         [cx, cy, w, h] (in cxcy convention)
-        
+
         cx = \frac{px}{10} \times aw + acx
         cy = \frac{py}{10} \times ah + acy
         w  = aw \times \exp{pw / 5}
         h  = ah \times \exp{ph / 5}
-        
+
     predicted_objectness: a tensor of shape (N, n)
         N: batch size
         n: number of anchor boxes priors on each image
         Objectness of each predicted boxes. Range between
         0 and 1
-        
-        
+
+
     predicted_class_dist: a tensor of shape (N, n, m) (
-        N: batch size, 
-        n: number of anchor boxes priors on each image, 
+        N: batch size,
+        n: number of anchor boxes priors on each image,
         m: number of distinct classes (includeing the background class))
         Do not apply softmax
-    
-    
-    boxes: a list of N tensors of shape (M_i, 4), $M_i$ is the number of 
-        bounding boxes in each image. Each bbox should be normalized 
-        by the spacial dimension of the image. 
+
+
+    boxes: a list of N tensors of shape (M_i, 4), $M_i$ is the number of
+        bounding boxes in each image. Each bbox should be normalized
+        by the spacial dimension of the image.
         The bounding box should follow xyxy convention
-    
-    labels: class label for each image. A list of N tensors 
+
+    labels: class label for each image. A list of N tensors
         [T1, T2, ...]
         Ti[j] corresponds to the object in image i box j
         Ti should be a torch.long tensor
-    
+
     """
 
     def __init__(self, anchor_priors, **kwargs):
@@ -140,11 +140,11 @@ class HardNegativeMultiBoxesLoss(nn.Module):
             # object_for_each_prior : [o_0, o_1, ..., o_{n_priors-1}]
             # o_i is the object with highest iou to the prior i
 
-            # We don't want a situation where an object is not represented in our positive
+            # We don't want a situation where an object is not represented in our postive
             # (non-background) prior
             # 1 .An object might not have big iou with all priors and is therefore not in
             # object_for each prior
-            # 2. All priors with the object may be assigned as background based on threshold
+            # 2. All priors with the object may be assgined as background based on threshold
 
             # To remedy this
             # First, find priors with the maximum iou for each object (mask)
@@ -180,7 +180,7 @@ class HardNegativeMultiBoxesLoss(nn.Module):
             # store the true labels for each priors
             true_classes[i] = label_for_each_prior
 
-            # store the encoded ground-truth bbox relative to the priors
+            # store the encoded ground-truth bbox relateive to the priors
             # in log space
             true_locs[i] = cxcy_to_gcxgcy(
                 xy_to_cxcy(boxes[i][object_for_each_prior]),
@@ -214,7 +214,7 @@ class HardNegativeMultiBoxesLoss(nn.Module):
 
         obj_loss = F.mse_loss(predicted_objectness, true_objectness, reduction="none")
 
-        # account loss for all positive class
+        # account loss for all postive class
         obj_loss_pos = obj_loss[positive_priors].mean()
 
         # hard mine negative

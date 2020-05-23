@@ -8,10 +8,12 @@ from torch.utils.data import DataLoader
 import torchvision as tv
 
 import os
+from tqdm import tqdm
 
 from alectio_sdk.torch_utils.loss import HardNegativeMultiBoxesLoss
 from alectio_sdk.torch_utils.utils import Anchors, batched_gcxgcy_to_cxcy
 from alectio_sdk.torch_utils.utils import batched_cxcy_to_xy
+from FolderWithPaths import FolderWithPaths
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -100,95 +102,97 @@ def bbox_transform(batched_prediction):
     return predicted_boxes, predicted_objectness, predicted_class_dist
 
 
-def train(payload):
-
-    labeled = payload["labeled"]
-    resume_from = payload["resume_from"]
-    ckpt_file = payload["ckpt_file"]
-
+def train(labeled, resume_from, ckpt_file):
     # hyperparameters
     batch_size = 16
-    epochs = 2  # just for demo
     lr = 1e-2
     weight_decay = 1e-2
+    epochs = 30
 
-    coco = COCO("./data", Transforms(), samples=labeled, train=True)
+    coco = COCO(env.DATA_DIR, Transforms(), samples=labeled, train=True)
     loader = DataLoader(
         coco, shuffle=True, batch_size=batch_size, collate_fn=collate_fn
     )
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
+    # ckpt = torch.load(os.path.join(env.WEIGHTS_DIR, 'yolov3-tiny-prn.weights'))
+    # model.load_state_dict(ckpt["model"])
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # resume model and optimizer from previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join("./log", resume_from))
+        ckpt = torch.load(os.path.join(env.EXPT_DIR, resume_from))
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
+    else:
+        getdatasetstate()
 
     # loss function
     priors = anchors.normalize("xyxy")
     loss_fn = HardNegativeMultiBoxesLoss(priors, device=device)
 
     model.train()
-    for img, boxes, labels in loader:
-        img = img.to(device)
+    for epoch in tqdm(range(epochs), desc="Training"):
+        for img, boxes, labels in loader:
+            img = img.to(device)
 
-        # 3 predictions from 3 yolo layers
-        output = model(img)
+            # 3 predictions from 3 yolo layers
+            output = model(img)
 
-        # batch predictions on each image
-        batched_prediction = []
-        for p in output:  # (batch_size, 3, gx, gy, 85)
-            batch_size = p.shape[0]
-            p = p.view(batch_size, -1, 85)
+            # batch predictions on each image
+            batched_prediction = []
+            for p in output:  # (bacth_size, 3, gx, gy, 85)
+                batch_size = p.shape[0]
+                p = p.view(batch_size, -1, 85)
 
-            batched_prediction.append(p)
+                batched_prediction.append(p)
 
-        batched_prediction = torch.cat(batched_prediction, dim=1)
-        # (batch_size, n_priors, 85)
+            batched_prediction = torch.cat(batched_prediction, dim=1)
 
-        # the last dim of batched_prediction represent the predicted box
-        # batched_prediction[...,:4] is the coordinate of the predicted bbox
-        # batched_prediction[...,4] is the objectness score
-        # batched_prediction[...,5:] is the pre-softmax class distribution
+            '''
+            (batch_size, n_priors, 85)
 
-        # we need to apply some transforms to the those predictions
-        # before we can use HardNegativeMultiBoxesLoss
-        # In particular, the predicted bbox need to be relative to
-        # normalized anchor priors
-        # we will define another function bbox_transform
-        # to do those transform, since it will be used by other processes
-        # as well.
-        # see documentation on HardNegativeMultiBoxesLoss
-        # on its input parameters
+            the last dim of batched_prediction represent the predicted box
+            batched_prediction[...,:4] is the coordinate of the predicted bbox
+            batched_prediction[...,4] is the objectness score
+            batched_prediction[...,5:] is the pre-softmax class distribution
 
-        predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
-            batched_prediction
-        )
+            we need to apply some transforms to the those predictions
+            before we can use HardNegativeMultiBoxesLoss
+            In particular, the predicted bbox need to be relative to
+            normalized anchor priors
+            we will define another function bbox_transform
+            to do those transform, since it will be used by other processes
+            as well.
+            see documentation on HardNegativeMultiBoxesLoss
+            on its input parameters
+            '''
 
-        loss = loss_fn(
-            predicted_boxes, predicted_objectness, predicted_class_dist, boxes, labels
-        )
+            predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
+                batched_prediction
+            )
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+            loss = loss_fn(
+                predicted_boxes, predicted_objectness, predicted_class_dist, boxes, labels
+            )
 
-    # save ckpt for this loop
-    ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        # save ckpt for this loop depending on save_every
+        ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
+        torch.save(ckpt, os.path.join(env.EXPT_DIR, ckpt_file))
+
+    return
 
     torch.save(ckpt, os.path.join("./log", ckpt_file))
     return
 
-
-def test(payload):
-    ckpt_file = payload["ckpt_file"]
-
+def test(ckpt_file):
     batch_size = 16
-
-    coco = COCO("./data", Transforms(), train=False)
+    coco = COCO(env.DATA_DIR, Transforms(), train=False)
     loader = DataLoader(
         coco, shuffle=False, batch_size=batch_size, collate_fn=collate_fn
     )
@@ -196,7 +200,7 @@ def test(payload):
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
 
-    ckpt = torch.load(os.path.join("./log", ckpt_file))
+    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     model.eval()
@@ -207,7 +211,7 @@ def test(payload):
     # keep track of ground-truth boxes and label
     labels = []
     with torch.no_grad():
-        for img, boxes, class_labels in loader:
+        for img, boxes, class_labels in tqdm(loader, desc="Testing"):
             img = img.to(device)
             # get inference output
             output = model(img)
@@ -281,20 +285,13 @@ def test(payload):
     return {"predictions": prd, "labels": lbs}
 
 
-def infer(payload):
-    unlabeled = payload["unlabeled"]
-    ckpt_file = payload["ckpt_file"]
-
-    batch_size = 16
-
-    coco = COCO("./data", Transforms(), samples=unlabeled, train=True)
-    loader = DataLoader(
-        coco, shuffle=False, batch_size=batch_size, collate_fn=collate_fn
-    )
+def infer(unlabeled, ckpt_file):
+    coco = COCO(env.DATA_DIR, Transforms(), samples=unlabeled, train=True)
+    loader = DataLoader(coco, shuffle=False, batch_size=16, collate_fn=collate_fn)
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    ckpt = torch.load(os.path.join("./log", ckpt_file))
+    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     model.eval()
@@ -303,20 +300,20 @@ def infer(payload):
     predictions = []
 
     with torch.no_grad():
-        for img, _, _ in loader:
+        for img, _, _ in tqdm(loader, desc="Inferring"):
             img = img.to(device)
             # get inference output
             output = model(img)
 
             # batch predictions from 3 yolo layers
             batched_prediction = []
-            for p in output:  # (batch_size, 3, gx, gy, 85)
-                batch_size = p.shape[0]
-                p = p.view(batch_size, -1, 85)
+            for p in output:  # (bacth_size, 3, gx, gy, 85)
+                p = p.view(p.shape[0], -1, 85)
                 batched_prediction.append(p)
 
             batched_prediction = torch.cat(batched_prediction, dim=1)
-        predictions.append(batched_prediction)
+            predictions.append(batched_prediction)
+
     predictions = torch.cat(predictions, dim=0)
 
     # apply nms to predicted bounding boxes
@@ -343,18 +340,15 @@ def infer(payload):
     del predicted_boxes  # (no longer need cxcy format)
 
     # class distribution is part of the return
-    # do notapply softmax to the predicted class distribution
+    # do not apply softmax to the predicted class distribution
     # as we will do it internally for efficiency
     outputs = {}
     for i in range(len(coco)):
         # get boxes, scores, and objects on each image
         _xyxy, _scores = xyxy[i], predicted_objectness[i]
         _pre_softmax = predicted_class_dist[i]
-
         keep = tv.ops.nms(_xyxy, _scores, 0.5)
-
         boxes, scores, pre_softmax = _xyxy[keep], _scores[keep], _pre_softmax[keep]
-
         outputs[i] = {
             "boxes": boxes.cpu().numpy().tolist(),
             "pre_softmax": pre_softmax.cpu().numpy().tolist(),
@@ -364,16 +358,28 @@ def infer(payload):
     return {"outputs": outputs}
 
 
+def getdatasetstate():
+    dataset = FolderWithPaths(env.TRAINDATA_DIR)
+    dataset.transform = tv.transforms.Compose(
+        [tv.transforms.RandomCrop(32), tv.transforms.ToTensor()]
+    )
+    trainpath = {}
+    batchsize = 1
+    loader = DataLoader(dataset, batch_size=batchsize, num_workers=2, shuffle=False)
+    for i, (_, _, paths) in enumerate(loader):
+        for path in paths:
+            if "train" in path:
+                trainpath[i] = path
+    return trainpath
+
+
 if __name__ == "__main__":
     # debug
     # train
-    payload = {"labeled": range(10), "resume_from": None, "ckpt_file": "ckpt_0"}
-    train(payload)
 
-    # test
-    payload = {"ckpt_file": "ckpt_0"}
-    test(payload)
+    labeled = list(range(10))
+    resume_from = None
+    ckpt_file = "ckpt_0"
+    logdir = "test"
 
-    # infer
-    payload = {"unlabeled": range(10, 20), "ckpt_file": "ckpt_0"}
-    infer(payload)
+    train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
