@@ -10,6 +10,7 @@ import sys
 import os
 import time
 import json
+import sklearn.metrics
 from copy import deepcopy
 
 from .s3_client import S3Client
@@ -211,9 +212,9 @@ class Pipeline(object):
             }
 
         if self.type == "Classification" or self.type == "Text Classification":
-            predictions, ground_truth = np.array(predictions), np.array(ground_truth)
-            acc = (predictions == ground_truth).sum() / len(predictions)
-            metrics = {"accuracy": acc}
+            confusion_matrix = sklearn.metrics.confusion_matrix(ground_truth, predictions)
+            acc = sklearn.metrics.accuracy_score(ground_truth, predictions)
+            metrics = {"accuracy": acc, "confusion_matrix": confusion_matrix}
 
         # save metrics to S3
         object_key = os.path.join(
