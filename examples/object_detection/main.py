@@ -1,9 +1,15 @@
+import argparse
 from alectio_sdk.flask_wrapper import Pipeline
 from processes import train, test, infer, getdatasetstate
 
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--expname", type=str, default="AlectioSDK", help="Experiment name")
+args = parser.parse_args()
+
 # put the train/test/infer processes into the constructor
 app = Pipeline(
-    name="coco",
+    name=args.expname,
     train_fn=train,
     test_fn=test,
     infer_fn=infer,
