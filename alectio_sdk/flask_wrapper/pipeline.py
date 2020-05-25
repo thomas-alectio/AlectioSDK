@@ -63,7 +63,8 @@ class Pipeline(object):
             os.mkdir(self.logdir)
 
         # read selected indices upto this loop
-        self.cur_loop = payload["cur_loop"]
+        self.curout_loop = payload["cur_loop"]
+        self.cur_loop = payload["cur_loop"] - 1
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -117,12 +118,10 @@ class Pipeline(object):
         fetch selected indices upto current loop
         use expt_id to create logdir
         pass three keyward arguments to the customer defined logic
-
         labeled: labeled indices so far
         resume_from:
         ckpt_file
         logdir
-
         if train_fn is executed successfully, write labels to S3,
             call PBE with success
         if train_fn failed, call PBE with error msg
@@ -152,7 +151,7 @@ class Pipeline(object):
         # @TODO compute insights from labels
         insights = {"train_time": end - start}
         object_key = os.path.join(
-            self.expt_dir, "insights_{}.pkl".format(self.cur_loop)
+            self.expt_dir, "insights_{}.pkl".format(self.curout_loop)
         )
 
         self.client.write(insights, self.bucket_name, object_key, "pickle")
@@ -163,9 +162,7 @@ class Pipeline(object):
         """ Test the performance of the model
         write predictions and ground truth to the S3
         bucket
-
         only write ground-truth to S3 once (cur_loop==0)
-
         Return:
         -------
             (predictions, ground_truth)
@@ -176,14 +173,14 @@ class Pipeline(object):
 
         # write predictions and labels to S3
         object_key = os.path.join(
-            self.expt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
+            self.expt_dir, "test_predictions_{}.pkl".format(self.curout_loop)
         )
         self.client.write(predictions, self.bucket_name, object_key, "pickle")
 
         if self.cur_loop == 0:
             # write ground truth to S3
             object_key = os.path.join(
-                self.expt_dir, "test_ground_truth.pkl".format(self.cur_loop)
+                self.expt_dir, "test_ground_truth.pkl".format(self.curout_loop)
             )
             self.client.write(ground_truth, self.bucket_name, object_key, "pickle")
 
@@ -218,10 +215,12 @@ class Pipeline(object):
         if self.type == "Classification" or self.type == "Text Classification":
             predictions, ground_truth = np.array(predictions), np.array(ground_truth)
             acc = (predictions == ground_truth).sum() / len(predictions)
-            metrics = {'accuracy': acc}
+            metrics = {"accuracy": acc}
 
         # save metrics to S3
-        object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
+        object_key = os.path.join(
+            self.expt_dir, "metrics_{}.pkl".format(self.curout_loop)
+        )
         self.client.write(metrics, self.bucket_name, object_key, "pickle")
         return
 
@@ -235,22 +234,21 @@ class Pipeline(object):
         )["outputs"]
 
         # write the output to S3
-        key = os.path.join(self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop))
+        key = os.path.join(
+            self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
+        )
         self.client.write(outputs, self.bucket_name, key, "pickle")
         return
 
     def __call__(self, debug=False, host="0.0.0.0", port=5000):
         """Run the app
-
         Paramters:
         ----------
         debug: boolean. Default: False
             If set to true, then the app runs in debug mode
             See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug
-
         host: the hostname to listen to. Default: '0.0.0.0'
             By default the app available to external world
-
         port: the port of the webserver. Default: 5000
         """
         self.app.run(debug=debug, host=host, port=5000)
