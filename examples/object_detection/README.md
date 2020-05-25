@@ -135,16 +135,6 @@ The infer process is used to apply the model to the unlabeled set to run inferen
 We will use the inferred output to estimate which of those unlabeled data will
 be most valuable to your model.
 
-Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
-arguments of this process.
-
-### 6. Build Flask App
-Finally, to run the flask app, execute:
-
-```
-python main.py --expname <experiment-name>
-```
-
 #### Return of the Infer Process
 The return of the infer process is a dictionary
 ```python
@@ -171,3 +161,13 @@ scores (`List[float]`)
 pre_softmax (`List[List[float]]`):
 > A list of class distribution for each
     detected bounding boxes without applying softmax.
+
+Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
+arguments of this process.
+
+### 6. Build Flask App
+Finally, to run the flask app, execute:
+
+```
+python main.py --expname <experiment-name>
+```
