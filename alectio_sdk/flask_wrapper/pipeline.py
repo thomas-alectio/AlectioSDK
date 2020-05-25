@@ -95,14 +95,12 @@ class Pipeline(object):
         if self.cur_loop == 0:
             self.resume_from = None
             state_json = self.getstate_fn()
-            object_key = os.path.join(
-                self.expt_dir, "data_map.pkl".format(self.cur_loop)
-            )
+            object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.write(state_json, self.bucket_name, object_key, "pickle")
         else:
-            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
+            self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
 
-        self.ckpt_file = "ckpt_{}".format(self.cur_loop)
+        self.ckpt_file = "ckpt_{}".format(self.curout_loop)
 
         self.train()
         self.test()
