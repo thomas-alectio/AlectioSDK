@@ -2,6 +2,8 @@ from flask import jsonify
 from flask import Flask, Response
 from flask import request
 from flask import send_file
+
+import numpy as np
 import requests
 import traceback
 import sys
@@ -213,8 +215,10 @@ class Pipeline(object):
                 "class_labels": self.meta_data["class_labels"],
             }
 
-        if self.type == "Image Classification" or self.type == "Text Classification":
-            pass
+        if self.type == "Classification" or self.type == "Text Classification":
+            predictions, ground_truth = np.array(predictions), np.array(ground_truth)
+            acc = (predictions == ground_truth).sum() / len(predictions)
+            metrics = {'accuracy': acc}
 
         # save metrics to S3
         object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
