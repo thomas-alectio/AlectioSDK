@@ -94,9 +94,9 @@ class Pipeline(object):
 
         if self.cur_loop == 0:
             self.resume_from = None
-            state_json = self.getstate_fn()
+            self.state_json = self.getstate_fn()
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
-            self.client.write(state_json, self.bucket_name, object_key, "pickle")
+            self.client.write(self.state_json, self.bucket_name, object_key, "pickle")
         else:
             self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
 
@@ -231,11 +231,17 @@ class Pipeline(object):
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
 
+        #Remap to absolute indices
+        remap_outputs ={}
+        for i, (k,v) in enumerate(outputs.items()):
+            ix =self.unlabeled.pop(0)
+            remap_outputs[ix] = v
+        
         # write the output to S3
         key = os.path.join(
             self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(outputs, self.bucket_name, key, "pickle")
+        self.client.write(remap_outputs, self.bucket_name, key, "pickle")
         return
 
     def __call__(self, debug=False, host="0.0.0.0", port=5000):
