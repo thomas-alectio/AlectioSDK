@@ -127,10 +127,11 @@ For example, you can use python's built-in virtual environment via:
 python3 -m venv env
 source env/bin/activate
 ```
-### 2. Install AlectioSDK
+### 2. Install AlectioSDK/requirements
 
 ```
 pip install .
+pip install -r requirements.txt
 ```
 ### 3. Run Examples
 
