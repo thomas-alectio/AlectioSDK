@@ -159,8 +159,8 @@ scores (`List[float]`)
    bounding box. Objectness should be in `[0, 1]`.
 
 pre_softmax (`List[List[float]]`):
-> A list of class distribution for each
-    detected bounding boxes without applying softmax.
+> A list of logits for each of the
+    detected bounding boxes before the final layer activation is applied.
 
 Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
 arguments of this process.
