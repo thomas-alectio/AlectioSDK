@@ -231,12 +231,12 @@ class Pipeline(object):
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
 
-        #Remap to absolute indices
-        remap_outputs ={}
-        for i, (k,v) in enumerate(outputs.items()):
-            ix =self.unlabeled.pop(0)
+        # Remap to absolute indices
+        remap_outputs = {}
+        for i, (k, v) in enumerate(outputs.items()):
+            ix = self.unlabeled.pop(0)
             remap_outputs[ix] = v
-        
+
         # write the output to S3
         key = os.path.join(
             self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
