@@ -62,7 +62,7 @@ def mAP(
         
         threshold: float. Default=0.5
             IoU threshold for a prediction to be considered correct
-            with grounth-truth bouding box
+            with ground-truth bounding box
             
     
     Return:

@@ -1,8 +1,5 @@
 """
-Main processes for the projecct
-
-Author: Hongshan Li
-Email: hongshan.li@alectio.com
+Main processes for the project
 """
 
 import torch
@@ -18,10 +15,13 @@ import pickle
 
 from dataset import TEXT, LABEL, DailyDialog, entire_data
 from model import RNN
-import envs
 
+DEVICE = os.getenv("DEVICE")
+VECTOR_DIR = os.getenv("VECTOR_DIR")
+DATA_DIR = os.getenv("DATA_DIR")
+EXPT_DIR = os.getenv("EXPT_DIR")
 
-# initialze the model
+# initialize the model
 INPUT_DIM = len(TEXT.vocab)
 EMBEDDING_DIM = 100
 HIDDEN_DIM = 256
@@ -54,24 +54,24 @@ def accuracy(outputs, targets):
 
 def train(payload):
     """Train the model and save the checkpoint
-    
+
     payload: the payload object received from the http call
-        from the Alectio Platform. 
+        from the Alectio Platform.
         It is parsed as an immutable dictionary with 3 keys
-        
+
         labeled: list
             indices of training data to be used for this active learning loop
-        
+
         resume_from: str
-            checkpoint file to resume from. For example, in loop n 
-            of active learning, the value of this key is `ckpt_(n-1)`, 
-            indicating that you should resume from ckeckpoint saved in loop n-1
-        
+            checkpoint file to resume from. For example, in loop n
+            of active learning, the value of this key is `ckpt_(n-1)`,
+            indicating that you should resume from checkpoint saved in loop n-1
+
         ckpt_file: str
-            ckeckpoint file to save. For example, in loop n of active 
-            learing, the value of this key is `ckpt_n`, i.e. you 
+            checkpoint file to save. For example, in loop n of active
+            learing, the value of this key is `ckpt_n`, i.e. you
             should save the model ckeckpoint as `ckpt_n` in your log directory
-    
+
     """
 
     # which checkpoint to resume from
@@ -95,7 +95,7 @@ def train(payload):
 
     # resume model and optimizer from ckpt of the previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(envs.EXPT_DIR, resume_from))
+        ckpt = torch.load(os.path.join(EXPT_DIR, resume_from))
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
 
@@ -106,7 +106,7 @@ def train(payload):
     labeled = [int(ix) for ix in labeled]
 
     dstr = DailyDialog(
-        path=os.path.join(envs.DATA_DIR, "train.json"),
+        path=os.path.join(DATA_DIR, "train.json"),
         text_field=TEXT,
         label_field=LABEL,
         samples=labeled,
@@ -116,7 +116,7 @@ def train(payload):
     ldtr = data.BucketIterator(
         dstr,
         batch_size=batch_size,
-        device=envs.DEVICE,
+        device=DEVICE,
         shuffle=True,
         sort_key=lambda x: len(x.text),
         sort_within_batch=True,
@@ -126,7 +126,7 @@ def train(payload):
     model.train()
 
     # log the epoch performance for further analysis
-    writer = SummaryWriter(envs.EXPT_DIR)
+    writer = SummaryWriter(EXPT_DIR)
 
     steps = 0
     for epoch in range(epochs):
@@ -150,13 +150,13 @@ def train(payload):
             if steps % print_fq == 0:
                 print(
                     "Epoch: {}, Global Step: {}, Loss: {}".format(
-                        epoch, step, loss.item()
+                        epoch, steps, loss.item()
                     )
                 )
 
         # save ckpt every epoch
         ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
-        torch.save(ckpt, os.path.join(envs.EXPT_DIR, ckpt_file))
+        torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
 
     writer.close()
     return
@@ -164,14 +164,14 @@ def train(payload):
 
 def test(payload):
     """Test the model and return the predictions and ground-truth
-    
+
     payload: the payload object received from the http call
-        from the Alectio Platform. 
+        from the Alectio Platform.
         It is parsed as an immutable dictionary with 1 key
-        
+
         ckpt_file: str
-            The model ckeckpoint file to be tested. For example,
-            in loop n of active learning, the value of this key is 
+            The model checkpoint file to be tested. For example,
+            in loop n of active learning, the value of this key is
             `ckpt_n`, indicating that you should load your model
             from `ckpt_n` in the log directory and test it
     """
@@ -181,7 +181,7 @@ def test(payload):
 
     # create test set
     dsts = DailyDialog(
-        path=os.path.join(envs.DATA_DIR, "test.json"),
+        path=os.path.join(DATA_DIR, "test.json"),
         text_field=TEXT,
         label_field=LABEL,
         samples=None,
@@ -193,7 +193,7 @@ def test(payload):
     # use a regular data loader without sorting samples according to its length
     # this is because we need to build a dictionary of data index and its prediction
     # so we cannot disrupt the order
-    ldts = data.Iterator(dsts, batch_size=batch_size, device=envs.DEVICE, shuffle=False)
+    ldts = data.Iterator(dsts, batch_size=batch_size, device=DEVICE, shuffle=False)
 
     # ground-truth labels and predictions
     lbs, prd = [], []
@@ -217,18 +217,18 @@ def test(payload):
 
 def infer(payload):
     """Use the model to infer on the unlabeled data and return the output
-    
+
     payload: the payload object received from the http call
-        from the Alectio Platform. 
+        from the Alectio Platform.
         It is parsed as an immutable dictionary with 2 keys
-        
+
         ckpt_file: str
-            The checkpoint file to use to apply inference. 
+            The checkpoint file to use to apply inference.
             For example, in loop n of active learning, the
             value of this key is `ckpt_n`. It means you should
             load `ckpt_n` from the log directory to your model
             for inference.
-            
+
         unlabeled: list
             indices of the data in the training set to be used
             for inference
@@ -240,12 +240,12 @@ def infer(payload):
     ckpt_file = payload["ckpt_file"]
 
     # load model state dict
-    ckpt = torch.load(os.path.join(envs.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     # create dataset
     dsinf = DailyDialog(
-        path=os.path.join(envs.DATA_DIR, "train.json"),
+        path=os.path.join(DATA_DIR, "train.json"),
         text_field=TEXT,
         label_field=LABEL,
         samples=unlabeled,
@@ -257,9 +257,7 @@ def infer(payload):
     # use a regular data loader without sorting samples according to its length
     # this is because we need to build a dictionary of data index and its output
     # so we cannot disrupt the order
-    ldinf = data.Iterator(
-        dsinf, batch_size=batch_size, device=envs.DEVICE, shuffle=False
-    )
+    ldinf = data.Iterator(dsinf, batch_size=batch_size, device=DEVICE, shuffle=False)
 
     outputs = None
     model.eval()

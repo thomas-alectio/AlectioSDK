@@ -1,26 +1,28 @@
-from dataset import COCO, Transforms, collate_fn
-from model import Darknet
-import env
-
+import torchvision as tv
+import os
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+from dataset import COCO, Transforms, collate_fn
+from model import Darknet
 from torch.utils.data import DataLoader
-import torchvision as tv
-
-import os
 from tqdm import tqdm
-
 from alectio_sdk.torch_utils.loss import HardNegativeMultiBoxesLoss
 from alectio_sdk.torch_utils.utils import Anchors, batched_gcxgcy_to_cxcy
 from alectio_sdk.torch_utils.utils import batched_cxcy_to_xy
 from FolderWithPaths import FolderWithPaths
+from PIL import Image, ImageFile
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+EXPT_DIR = "./log"
+DATA_DIR = "./data"
+TRAINDATA_DIR = "./data/images/"
+WEIGHTS_DIR = "./weights"
 
-# buiding anchor priors on one image
+# building anchor priors on one image
 # the all image are resize to 416, 416
 image_width, image_height = 416, 416
 
@@ -110,20 +112,20 @@ def train(labeled, resume_from, ckpt_file):
     weight_decay = 1e-2
     epochs = 30
 
-    coco = COCO(env.DATA_DIR, Transforms(), samples=labeled, train=True)
+    coco = COCO(DATA_DIR, Transforms(), samples=labeled, train=True)
     loader = DataLoader(
         coco, shuffle=True, batch_size=batch_size, collate_fn=collate_fn
     )
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    # ckpt = torch.load(os.path.join(env.WEIGHTS_DIR, 'yolov3-tiny-prn.weights'))
+    # ckpt = torch.load(os.path.join(WEIGHTS_DIR, 'yolov3-tiny-prn.weights'))
     # model.load_state_dict(ckpt["model"])
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
     # resume model and optimizer from previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(env.EXPT_DIR, resume_from))
+        ckpt = torch.load(os.path.join(EXPT_DIR, resume_from))
         model.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
     else:
@@ -150,8 +152,8 @@ def train(labeled, resume_from, ckpt_file):
                 batched_prediction.append(p)
 
             batched_prediction = torch.cat(batched_prediction, dim=1)
-            
-            '''
+
+            """
             (batch_size, n_priors, 85)
 
             the last dim of batched_prediction represent the predicted box
@@ -168,14 +170,20 @@ def train(labeled, resume_from, ckpt_file):
             as well.
             see documentation on HardNegativeMultiBoxesLoss
             on its input parameters
-            '''
+            """
 
-            predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
-                batched_prediction
-            )
+            (
+                predicted_boxes,
+                predicted_objectness,
+                predicted_class_dist,
+            ) = bbox_transform(batched_prediction)
 
             loss = loss_fn(
-                predicted_boxes, predicted_objectness, predicted_class_dist, boxes, labels
+                predicted_boxes,
+                predicted_objectness,
+                predicted_class_dist,
+                boxes,
+                labels,
             )
 
             optimizer.zero_grad()
@@ -184,14 +192,17 @@ def train(labeled, resume_from, ckpt_file):
 
         # save ckpt for this loop depending on save_every
         ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
-        torch.save(ckpt, os.path.join(env.EXPT_DIR, ckpt_file))
-        
+        torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
+
+    return
+
+    torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
     return
 
 
 def test(ckpt_file):
     batch_size = 16
-    coco = COCO(env.DATA_DIR, Transforms(), train=False)
+    coco = COCO(DATA_DIR, Transforms(), train=False)
     loader = DataLoader(
         coco, shuffle=False, batch_size=batch_size, collate_fn=collate_fn
     )
@@ -199,7 +210,7 @@ def test(ckpt_file):
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
 
-    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     model.eval()
@@ -285,12 +296,12 @@ def test(ckpt_file):
 
 
 def infer(unlabeled, ckpt_file):
-    coco = COCO(env.DATA_DIR, Transforms(), samples=unlabeled, train=True)
+    coco = COCO(DATA_DIR, Transforms(), samples=unlabeled, train=True)
     loader = DataLoader(coco, shuffle=False, batch_size=16, collate_fn=collate_fn)
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
     model.load_state_dict(ckpt["model"])
 
     model.eval()
@@ -358,7 +369,7 @@ def infer(unlabeled, ckpt_file):
 
 
 def getdatasetstate():
-    dataset = FolderWithPaths(env.TRAINDATA_DIR)
+    dataset = FolderWithPaths(TRAINDATA_DIR)
     dataset.transform = tv.transforms.Compose(
         [tv.transforms.RandomCrop(32), tv.transforms.ToTensor()]
     )

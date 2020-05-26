@@ -9,70 +9,70 @@ from ..utils import box_iou
 
 class HardNegativeMultiBoxesLoss(nn.Module):
     """Loss function for object detection
-    
+
     This loss function computes the loss for bounding box regression and
-    cross entropy loss for predicted objects. Loss for the background are 
-    computed via hard-negative mining to avoid overwhelm the loss with background 
-    class. 
-    
+    cross entropy loss for predicted objects. Loss for the background are
+    computed via hard-negative mining to avoid overwhelm the loss with background
+    class.
+
     Parameters:
     -----------
         anchor_priors: Normalized bounding box in xyxy convention.
             prior anchor boxes on each image. Underlying data is a
             a tensor of shape (P, 4), where P denotes the total number
-            of prior anchor boxes on each image. 
+            of prior anchor boxes on each image.
             The bounding boxes should follow cxcy convention
-    
+
     Keyword Args:
     -------------
         neg_to_pos: int. Default 3
             number of negative priors to positive priors when computing loss.
-            For example, if neg_to_pos is N, then for loss of m positive priors 
-            (prior that contains an object) on each image, 
+            For example, if neg_to_pos is N, then for loss of m positive priors
+            (prior that contains an object) on each image,
             we include loss of N*m hardest negative priors
-        
+
         alpha: float. Default 1.0
             weights of bounding box regression error
-        
-        
+
+
     Shapes:
     -------
-    predicted_boxes: tensor of shape (N, n, 4) (N: batch size, n: number of anchor boexes priors on each image)
-        Predicted bounding boxes with respect to the anchor priors. 
-        Let [px, py, pw, ph] be the predicted boxes relative to the anchor prior 
+    predicted_boxes: tensor of shape (N, n, 4) (N: batch size, n: number of anchor boxes priors on each image)
+        Predicted bounding boxes with respect to the anchor priors.
+        Let [px, py, pw, ph] be the predicted boxes relative to the anchor prior
         [acx, acy, aw, ah] (in cxcy convention)
-        Then the actual bounding box [px, py, pw, ph] represents is 
+        Then the actual bounding box [px, py, pw, ph] represents is
         [cx, cy, w, h] (in cxcy convention)
-        
+
         cx = \frac{px}{10} \times aw + acx
         cy = \frac{py}{10} \times ah + acy
         w  = aw \times \exp{pw / 5}
         h  = ah \times \exp{ph / 5}
-        
+
     predicted_objectness: a tensor of shape (N, n)
         N: batch size
         n: number of anchor boxes priors on each image
         Objectness of each predicted boxes. Range between
         0 and 1
-        
-        
+
+
     predicted_class_dist: a tensor of shape (N, n, m) (
-        N: batch size, 
-        n: number of anchor boexes priors on each image, 
+        N: batch size,
+        n: number of anchor boxes priors on each image,
         m: number of distinct classes (includeing the background class))
         Do not apply softmax
-    
-    
-    boxes: a list of N tensors of shape (M_i, 4), $M_i$ is the number of 
-        bounding boxes in each image. Each bbox should be normalized 
-        by the spacial dimension of the image. 
+
+
+    boxes: a list of N tensors of shape (M_i, 4), $M_i$ is the number of
+        bounding boxes in each image. Each bbox should be normalized
+        by the spacial dimension of the image.
         The bounding box should follow xyxy convention
-    
-    labels: class label for each image. A list of N tensors 
+
+    labels: class label for each image. A list of N tensors
         [T1, T2, ...]
         Ti[j] corresponds to the object in image i box j
         Ti should be a torch.long tensor
-    
+
     """
 
     def __init__(self, anchor_priors, **kwargs):
