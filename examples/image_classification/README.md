@@ -81,8 +81,10 @@ images. The value of `outputs[i]` is a dictionary that records the output of
 the model on training image `i`. 
 
 ## TODO
-Implementation of additional metrics including:
-- queried per class
-- confusion matrix
-- label disagreement
-- accuracy per class
+- Implementation of additional metrics including:
+  - ~queried per class~
+  - ~confusion matrix~
+  - ~label disagreement~
+  - ~accuracy per class~
+
+- Output should include score distribution and logits 

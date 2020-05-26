@@ -19,6 +19,6 @@ if __name__ == "__main__":
     #             "user_id": "8a90a570972811eaad5238c986352c36",
     #             "type": "Classification",
     #             "bucket_name": "alectio-demo"}
-
     # app._one_loop(payload)
+    
     app(debug=True)
