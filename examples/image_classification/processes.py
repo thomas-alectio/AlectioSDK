@@ -20,10 +20,10 @@ def getdatasetstate():
     return {k:k for k in range(50000)}
 
 def train(labeled, resume_from, ckpt_file):
-    batch_size = 16
-    lr = 1e-2
-    weight_decay = 1e-2
-    epochs = 10 # just for demo
+    batch_size = 4
+    lr = 0.001
+    momentum = 0.9
+    epochs = 20 # just for demo
 
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
     trainset = Subset(trainset, labeled)
@@ -31,7 +31,7 @@ def train(labeled, resume_from, ckpt_file):
 
     net = Net().to(device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(net.parameters(), lr=lr, weight_decay=weight_decay)
+    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
     if resume_from is not None:
         ckpt = torch.load(os.path.join(env.EXPT_DIR, resume_from))
