@@ -135,4 +135,4 @@ pip install -r requirements.txt
 ```
 ### 3. Run Examples
 
-The remaining installation instructions are detailed in the [examples](./examples) directory. We cover one example for [topic classification](./examples/topic_classification) and one example for [object detection](./examples/object_detection).
+The remaining installation instructions are detailed in the [examples](./examples) directory. We cover one example for [topic classification](./examples/topic_classification), one example for [image classification](./examples/image_classification) and one example for [object detection](./examples/object_detection).
