@@ -20,5 +20,5 @@ if __name__ == "__main__":
     #             "type": "Classification",
     #             "bucket_name": "alectio-demo"}
     # app._one_loop(payload)
-    
+
     app(debug=True)

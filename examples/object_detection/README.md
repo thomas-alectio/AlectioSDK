@@ -45,6 +45,9 @@ mkdir log
 cd data
 aws s3 cp s3://alectio-resources/cocosamples . --recursive
 cd ..
+mkdir weights
+cd weights
+aws s3 cp s3://alectio-resources/cocoweights . --recursive
 ```
 
 For most part the data is preprocessed according to the Darknet convention. The only difference is that we use the `xyxy` format for the ground-truth bounding boxes.

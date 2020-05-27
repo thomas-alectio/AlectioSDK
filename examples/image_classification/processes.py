@@ -28,7 +28,7 @@ def train(labeled, resume_from, ckpt_file):
     batch_size = 4
     lr = 0.001
     momentum = 0.9
-    epochs = 20 # just for demo
+    epochs = 20  # just for demo
 
     trainset = torchvision.datasets.CIFAR10(
         root="./data", train=True, download=True, transform=transform

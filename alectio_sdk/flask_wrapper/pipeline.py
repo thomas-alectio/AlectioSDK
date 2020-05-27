@@ -139,6 +139,7 @@ class Pipeline(object):
             )
             self.labeled.extend(selected_indices)
 
+        self.labeled = sorted(self.labeled)  # Maintain increasing order
         labels = self.train_fn(
             labeled=deepcopy(self.labeled),
             resume_from=self.resume_from,
@@ -212,18 +213,32 @@ class Pipeline(object):
             }
 
         if self.type == "Classification" or self.type == "Text Classification":
-            confusion_matrix = sklearn.metrics.confusion_matrix(ground_truth, predictions)
-            num_queried_per_class = {k:v for k, v in enumerate(confusion_matrix.sum(axis=1))}
-            acc_per_class = {k:v.round(3) for k, v in enumerate(confusion_matrix.diagonal() / confusion_matrix.sum(axis=1))}
+            confusion_matrix = sklearn.metrics.confusion_matrix(
+                ground_truth, predictions
+            )
+            num_queried_per_class = {
+                k: v for k, v in enumerate(confusion_matrix.sum(axis=1))
+            }
+            acc_per_class = {
+                k: v.round(3)
+                for k, v in enumerate(
+                    confusion_matrix.diagonal() / confusion_matrix.sum(axis=1)
+                )
+            }
             accuracy = sklearn.metrics.accuracy_score(ground_truth, predictions)
-            FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)  
+            FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)
             FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
             TP = confusion_matrix.diagonal()
             TN = confusion_matrix.sum() - (FP + FN + TP)
-            label_disagreement = {k:v.round(3) for k,v in enumerate(FP / (FP + TN))}
+            label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
 
-            metrics = {"accuracy": accuracy, "confusion_matrix": confusion_matrix, "acc_per_class": acc_per_class, \
-                        "label_disagreement": label_disagreement, "num_queried_per_class": num_queried_per_class}
+            metrics = {
+                "accuracy": accuracy,
+                "confusion_matrix": confusion_matrix,
+                "acc_per_class": acc_per_class,
+                "label_disagreement": label_disagreement,
+                "num_queried_per_class": num_queried_per_class,
+            }
 
         # save metrics to S3
         object_key = os.path.join(
@@ -236,7 +251,7 @@ class Pipeline(object):
         """ Infer on the unlabeled"""
         # Get unlabeled
         ts = range(self.meta_data["train_size"])
-        self.unlabeled = list(set(ts) - set(self.labeled))
+        self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
         outputs = self.infer_fn(
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
