@@ -66,3 +66,4 @@ Werkzeug==1.0.1
 zipp==3.1.0
 flask
 pandas
+scikit-image

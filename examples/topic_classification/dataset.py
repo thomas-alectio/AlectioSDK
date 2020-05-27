@@ -11,8 +11,10 @@ from collections import Counter
 from spacy.lang.en.stop_words import STOP_WORDS
 import spacy
 
-import envs
-
+DEVICE = os.getenv("DEVICE")
+VECTOR_DIR = os.getenv("VECTOR_DIR")
+DATA_DIR = os.getenv("DATA_DIR")
+EXPT_DIR = os.getenv("EXPT_DIR")
 
 stop_words = [x for x in STOP_WORDS]
 
@@ -62,7 +64,7 @@ class DailyDialog(Dataset):
 
 # build a dataset for the entire training set
 entire_data = DailyDialog(
-    path=os.path.join(envs.DATA_DIR, "train.json"),
+    path=os.path.join(DATA_DIR, "train.json"),
     text_field=TEXT,
     label_field=LABEL,
     samples=None,
@@ -71,7 +73,7 @@ entire_data = DailyDialog(
 
 
 # load glove vectors
-vectors = Vectors(name="glove.6B.100d.txt", cache=envs.VECTOR_DIR)
+vectors = Vectors(name="glove.6B.100d.txt", cache=VECTOR_DIR)
 
 
 # build text field with the glove vectors

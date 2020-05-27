@@ -2,12 +2,15 @@ from flask import jsonify
 from flask import Flask, Response
 from flask import request
 from flask import send_file
+
+import numpy as np
 import requests
 import traceback
 import sys
 import os
 import time
 import json
+import sklearn.metrics
 from copy import deepcopy
 
 from .s3_client import S3Client
@@ -61,7 +64,8 @@ class Pipeline(object):
             os.mkdir(self.logdir)
 
         # read selected indices upto this loop
-        self.cur_loop = payload["cur_loop"]
+        self.curout_loop = payload["cur_loop"]
+        self.cur_loop = payload["cur_loop"] - 1
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -91,15 +95,13 @@ class Pipeline(object):
 
         if self.cur_loop == 0:
             self.resume_from = None
-            state_json = self.getstate_fn()
-            object_key = os.path.join(
-                self.expt_dir, "data_map.pkl".format(self.cur_loop)
-            )
-            self.client.write(state_json, self.bucket_name, object_key, "pickle")
+            self.state_json = self.getstate_fn()
+            object_key = os.path.join(self.expt_dir, "data_map.pkl")
+            self.client.write(self.state_json, self.bucket_name, object_key, "pickle")
         else:
-            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
+            self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
 
-        self.ckpt_file = "ckpt_{}".format(self.cur_loop)
+        self.ckpt_file = "ckpt_{}".format(self.curout_loop)
 
         self.train()
         self.test()
@@ -111,16 +113,14 @@ class Pipeline(object):
         return payload
 
     def train(self):
-        """ run customer training process 
-        fetch selected indices upto current loop 
+        """ run customer training process
+        fetch selected indices upto current loop
         use expt_id to create logdir
         pass three keyward arguments to the customer defined logic
-        
         labeled: labeled indices so far
-        resume_from: 
+        resume_from:
         ckpt_file
         logdir
-        
         if train_fn is executed successfully, write labels to S3,
             call PBE with success
         if train_fn failed, call PBE with error msg
@@ -139,6 +139,7 @@ class Pipeline(object):
             )
             self.labeled.extend(selected_indices)
 
+        self.labeled = sorted(self.labeled)  # Maintain increasing order
         labels = self.train_fn(
             labeled=deepcopy(self.labeled),
             resume_from=self.resume_from,
@@ -150,7 +151,7 @@ class Pipeline(object):
         # @TODO compute insights from labels
         insights = {"train_time": end - start}
         object_key = os.path.join(
-            self.expt_dir, "insights_{}.pkl".format(self.cur_loop)
+            self.expt_dir, "insights_{}.pkl".format(self.curout_loop)
         )
 
         self.client.write(insights, self.bucket_name, object_key, "pickle")
@@ -158,12 +159,10 @@ class Pipeline(object):
         return
 
     def test(self):
-        """ Test the performance of the model 
-        write predictions and ground truth to the S3 
+        """ Test the performance of the model
+        write predictions and ground truth to the S3
         bucket
-        
         only write ground-truth to S3 once (cur_loop==0)
-        
         Return:
         -------
             (predictions, ground_truth)
@@ -174,14 +173,14 @@ class Pipeline(object):
 
         # write predictions and labels to S3
         object_key = os.path.join(
-            self.expt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
+            self.expt_dir, "test_predictions_{}.pkl".format(self.curout_loop)
         )
         self.client.write(predictions, self.bucket_name, object_key, "pickle")
 
         if self.cur_loop == 0:
             # write ground truth to S3
             object_key = os.path.join(
-                self.expt_dir, "test_ground_truth.pkl".format(self.cur_loop)
+                self.expt_dir, "test_ground_truth.pkl".format(self.curout_loop)
             )
             self.client.write(ground_truth, self.bucket_name, object_key, "pickle")
 
@@ -213,11 +212,38 @@ class Pipeline(object):
                 "class_labels": self.meta_data["class_labels"],
             }
 
-        if self.type == "Image Classification" or self.type == "Text Classification":
-            pass
+        if self.type == "Classification" or self.type == "Text Classification":
+            confusion_matrix = sklearn.metrics.confusion_matrix(
+                ground_truth, predictions
+            )
+            num_queried_per_class = {
+                k: v for k, v in enumerate(confusion_matrix.sum(axis=1))
+            }
+            acc_per_class = {
+                k: v.round(3)
+                for k, v in enumerate(
+                    confusion_matrix.diagonal() / confusion_matrix.sum(axis=1)
+                )
+            }
+            accuracy = sklearn.metrics.accuracy_score(ground_truth, predictions)
+            FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)
+            FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
+            TP = confusion_matrix.diagonal()
+            TN = confusion_matrix.sum() - (FP + FN + TP)
+            label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
+
+            metrics = {
+                "accuracy": accuracy,
+                "confusion_matrix": confusion_matrix,
+                "acc_per_class": acc_per_class,
+                "label_disagreement": label_disagreement,
+                "num_queried_per_class": num_queried_per_class,
+            }
 
         # save metrics to S3
-        object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
+        object_key = os.path.join(
+            self.expt_dir, "metrics_{}.pkl".format(self.curout_loop)
+        )
         self.client.write(metrics, self.bucket_name, object_key, "pickle")
         return
 
@@ -225,28 +251,33 @@ class Pipeline(object):
         """ Infer on the unlabeled"""
         # Get unlabeled
         ts = range(self.meta_data["train_size"])
-        self.unlabeled = list(set(ts) - set(self.labeled))
+        self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
         outputs = self.infer_fn(
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
 
+        # Remap to absolute indices
+        remap_outputs = {}
+        for i, (k, v) in enumerate(outputs.items()):
+            ix = self.unlabeled.pop(0)
+            remap_outputs[ix] = v
+
         # write the output to S3
-        key = os.path.join(self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop))
-        self.client.write(outputs, self.bucket_name, key, "pickle")
+        key = os.path.join(
+            self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
+        )
+        self.client.write(remap_outputs, self.bucket_name, key, "pickle")
         return
 
     def __call__(self, debug=False, host="0.0.0.0", port=5000):
         """Run the app
-
         Paramters:
         ----------
         debug: boolean. Default: False
             If set to true, then the app runs in debug mode
             See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug
-
         host: the hostname to listen to. Default: '0.0.0.0'
             By default the app available to external world
-
         port: the port of the webserver. Default: 5000
         """
         self.app.run(debug=debug, host=host, port=5000)

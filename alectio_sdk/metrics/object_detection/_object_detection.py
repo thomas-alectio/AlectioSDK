@@ -218,7 +218,9 @@ class Metrics(object):
         Returns:
              Precision score as float
         """
-        return np.mean([prec for c, prec in self.precision.items()]).item()
+        return np.mean(
+            [0 if math.isnan(prec) else prec for c, prec in self.precision.items()]
+        ).item()
 
     def getrecall(self):
         """
