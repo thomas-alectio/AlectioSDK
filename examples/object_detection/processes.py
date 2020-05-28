@@ -110,7 +110,7 @@ def train(labeled, resume_from, ckpt_file):
     batch_size = 16
     lr = 1e-2
     weight_decay = 1e-2
-    epochs = 30
+    epochs = 1
 
     coco = COCO(DATA_DIR, Transforms(), samples=labeled, train=True)
     loader = DataLoader(
