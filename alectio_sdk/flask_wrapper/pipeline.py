@@ -51,8 +51,12 @@ class Pipeline(object):
         backend_ip = self.config["backend_ip"]
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
-        r = requests.post(url=url, json=returned_payload)
-        return jsonify({"Message": "LoopComplete"})
+        status = requests.post(url=url, json=returned_payload, auth=('auth', os.environ['ALECTIO_API_KEY'])).status_code
+        if status == 200:
+            logging.info('Experiment {} running'.format(payload['experiment_id']))
+            return jsonify({"Message": "Loop Started - 200 status returned"})
+        else:
+            return jsonify({'Message': "Loop Failed - non 200 status returned"})
 
     def _one_loop(self, payload):
         """ Execute one loop of active learning """
@@ -232,9 +236,9 @@ class Pipeline(object):
         )["outputs"]
 
         #Remap to absolute indices
-        remap_outputs ={}
-        for i, (k,v) in enumerate(outputs.items()):
-            ix =self.unlabeled.pop(0)
+        remap_outputs = {}
+        for i, (k, v) in enumerate(outputs.items()):
+            ix = self.unlabeled.pop(0)
             remap_outputs[ix] = v
         
         # write the output to S3

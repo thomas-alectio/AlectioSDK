@@ -1,3 +1,12 @@
+# SDK metadata
+images/
+labels/
+test_labels.txt
+train_labels.txt
+
+# OSX generated files
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
