@@ -12,6 +12,7 @@ from alectio_sdk.torch_utils.utils import Anchors, batched_gcxgcy_to_cxcy
 from alectio_sdk.torch_utils.utils import batched_cxcy_to_xy
 from FolderWithPaths import FolderWithPaths
 from PIL import Image, ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

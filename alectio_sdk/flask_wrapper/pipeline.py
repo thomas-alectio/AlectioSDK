@@ -10,6 +10,7 @@ import sys
 import os
 import time
 import json
+import sklearn.metrics
 from copy import deepcopy
 
 from .s3_client import S3Client
@@ -215,9 +216,18 @@ class Pipeline(object):
             }
 
         if self.type == "Classification" or self.type == "Text Classification":
-            predictions, ground_truth = np.array(predictions), np.array(ground_truth)
-            acc = (predictions == ground_truth).sum() / len(predictions)
-            metrics = {"accuracy": acc}
+            confusion_matrix = sklearn.metrics.confusion_matrix(ground_truth, predictions)
+            num_queried_per_class = {k:v for k, v in enumerate(confusion_matrix.sum(axis=1))}
+            acc_per_class = {k:v.round(3) for k, v in enumerate(confusion_matrix.diagonal() / confusion_matrix.sum(axis=1))}
+            accuracy = sklearn.metrics.accuracy_score(ground_truth, predictions)
+            FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)  
+            FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
+            TP = confusion_matrix.diagonal()
+            TN = confusion_matrix.sum() - (FP + FN + TP)
+            label_disagreement = {k:v.round(3) for k,v in enumerate(FP / (FP + TN))}
+
+            metrics = {"accuracy": accuracy, "confusion_matrix": confusion_matrix, "acc_per_class": acc_per_class, \
+                        "label_disagreement": label_disagreement, "num_queried_per_class": num_queried_per_class}
 
         # save metrics to S3
         object_key = os.path.join(
@@ -235,12 +245,12 @@ class Pipeline(object):
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
 
-        #Remap to absolute indices
+        # Remap to absolute indices
         remap_outputs = {}
         for i, (k, v) in enumerate(outputs.items()):
             ix = self.unlabeled.pop(0)
             remap_outputs[ix] = v
-        
+
         # write the output to S3
         key = os.path.join(
             self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
