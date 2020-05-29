@@ -19,6 +19,18 @@ from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 
 
 class Pipeline(object):
+    r"""
+    A wrapper for your `train`, `test`, and `infer` function. The arguments for your functions should be specifed
+    separately and passed to your pipeline object during creation.
+
+    Args:
+        name (str): experiment name
+        train_fn (function): function to be executed in the train cycle of the experiment.
+        test_fn (function): function to be executed in the test cycle of the experiment.
+        infer_fn (function): function to be executed in the inference cycle of the experiment.
+        getstate_fn (function): function specifying a mapping between indices and file names.
+
+    """
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn):
         self.app = Flask(name)
 
@@ -57,8 +69,20 @@ class Pipeline(object):
         return jsonify({"Message": "LoopComplete"})
 
     def _one_loop(self, args):
-        """ Execute one loop of active learning """
-        
+        r"""
+        Executes one loop of active learning. Returns the read `payload` back to the user.
+
+        Args:
+           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test`
+           and infer functions.
+ 
+        Example::
+
+            args = {sample_payload: 'sample_payload.json', EXPT_DIR : "./log", exp_name: "test", \
+                                                                 train_epochs: 1, batch_size: 8}
+            app._one_loop(args)    
+    
+        """
         payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
@@ -115,19 +139,13 @@ class Pipeline(object):
         return payload
 
     def train(self, args):
-        """ run customer training process
-        fetch selected indices upto current loop
-        use expt_id to create logdir
-        pass three keyward arguments to the customer defined logic
-        labeled: labeled indices so far
-        resume_from:
-        ckpt_file
-        logdir
-        if train_fn is executed successfully, write labels to S3,
-            call PBE with success
-        if train_fn failed, call PBE with error msg
-        """
+        r"""
+        A wrapper for your `train` function. Returns `None`.
 
+        Args:
+           args: a dict whose keys include all of the arguments needed for your `train` function which is defined in `processes.py`.
+    
+        """
         start = time.time()
 
         self.labeled = []
@@ -161,13 +179,12 @@ class Pipeline(object):
         return
 
     def test(self, args):
-        """ Test the performance of the model
-        write predictions and ground truth to the S3
-        bucket
-        only write ground-truth to S3 once (cur_loop==0)
-        Return:
-        -------
-            (predictions, ground_truth)
+        r"""
+        A wrapper for your `test` function which writes predictions and ground truth to the specified S3 bucket. Returns `None`.
+
+        Args:
+           args: a dict whose keys include all of the arguments needed for your `test` function which is defined in `processes.py`.
+    
         """
         res = self.test_fn(args, ckpt_file=self.ckpt_file)
 
@@ -250,8 +267,13 @@ class Pipeline(object):
         return
 
     def infer(self, args):
-        """ Infer on the unlabeled"""
-        # Get unlabeled
+        r"""
+        A wrapper for your `infer` function which writes outputs to the specified S3 bucket. Returns `None`.
+
+        Args:
+           args: a dict whose keys include all of the arguments needed for your `infer` function which is defined in `processes.py`.  
+    
+        """
         ts = range(self.meta_data["train_size"])
         self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
         outputs = self.infer_fn(args,
@@ -272,14 +294,13 @@ class Pipeline(object):
         return
 
     def __call__(self, debug=False, host="0.0.0.0", port=5000):
-        """Run the app
-        Paramters:
-        ----------
-        debug: boolean. Default: False
-            If set to true, then the app runs in debug mode
-            See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug
-        host: the hostname to listen to. Default: '0.0.0.0'
-            By default the app available to external world
-        port: the port of the webserver. Default: 5000
+        r"""
+        A wrapper for your `test` function which writes predictions and ground truth to the specified S3 bucket. Returns `None`.
+
+        Args:
+           debug (boolean, Default=False): If set to true, then the app runs in debug mode. See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug.
+           host (str, Default='0.0.0.0'): the hostname to be listened to.
+           port(int, Default:5000): the port of the webserver.
+    
         """
         self.app.run(debug=debug, host=host, port=5000)
