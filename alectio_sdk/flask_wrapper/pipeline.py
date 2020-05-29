@@ -4,6 +4,7 @@ from flask import request
 from flask import send_file
 
 import numpy as np
+import json
 import requests
 import traceback
 import sys
@@ -55,10 +56,10 @@ class Pipeline(object):
         r = requests.post(url=url, json=returned_payload)
         return jsonify({"Message": "LoopComplete"})
 
-    def _one_loop(self, payload):
+    def _one_loop(self, args):
         """ Execute one loop of active learning """
-
-        # get some global args here
+        
+        payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
             os.mkdir(self.logdir)
@@ -95,7 +96,7 @@ class Pipeline(object):
 
         if self.cur_loop == 0:
             self.resume_from = None
-            self.state_json = self.getstate_fn()
+            self.state_json = self.getstate_fn(args)
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.write(self.state_json, self.bucket_name, object_key, "pickle")
         else:
@@ -103,16 +104,17 @@ class Pipeline(object):
 
         self.ckpt_file = "ckpt_{}".format(self.curout_loop)
 
-        self.train()
-        self.test()
-        self.infer()
+        self.train(args)
+        self.test(args)
+        self.infer(args)
+        
         # Drop unwanted payload values
         del payload["type"]
         del payload["cur_loop"]
         del payload["bucket_name"]
         return payload
 
-    def train(self):
+    def train(self, args):
         """ run customer training process
         fetch selected indices upto current loop
         use expt_id to create logdir
@@ -140,7 +142,7 @@ class Pipeline(object):
             self.labeled.extend(selected_indices)
 
         self.labeled = sorted(self.labeled)  # Maintain increasing order
-        labels = self.train_fn(
+        labels = self.train_fn(args,
             labeled=deepcopy(self.labeled),
             resume_from=self.resume_from,
             ckpt_file=self.ckpt_file,
@@ -158,7 +160,7 @@ class Pipeline(object):
 
         return
 
-    def test(self):
+    def test(self, args):
         """ Test the performance of the model
         write predictions and ground truth to the S3
         bucket
@@ -167,7 +169,7 @@ class Pipeline(object):
         -------
             (predictions, ground_truth)
         """
-        res = self.test_fn(ckpt_file=self.ckpt_file)
+        res = self.test_fn(args, ckpt_file=self.ckpt_file)
 
         predictions, ground_truth = res["predictions"], res["labels"]
 
@@ -247,12 +249,12 @@ class Pipeline(object):
         self.client.write(metrics, self.bucket_name, object_key, "pickle")
         return
 
-    def infer(self):
+    def infer(self, args):
         """ Infer on the unlabeled"""
         # Get unlabeled
         ts = range(self.meta_data["train_size"])
         self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
-        outputs = self.infer_fn(
+        outputs = self.infer_fn(args,
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
 
