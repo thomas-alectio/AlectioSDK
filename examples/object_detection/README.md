@@ -169,8 +169,8 @@ Refer to main [AlectioSDK ReadMe](../../README.md) for general information regar
 arguments of this process.
 
 ### 6. Build Dataset state process
-The dataset state process helps the Alectio team to generate a reference database with a mapping between list of indices and the corresponding imagenames within your custom dataset object
-The return of the `getdatasetstate` function is a dictionary. for example ` a dict named trainstate ` that returns the indices in the dataset object mapped to imagenames as seen below 
+The dataset state process helps the Alectio team to generate a reference database with a mapping between list of indices and the corresponding imagenames within your custom dataset object.
+The return of the `getdatasetstate` function is a dictionary. For example  a dict named ` trainstate ` that returns the indices in the dataset object mapped to imagenames as seen below 
 
 ```
 trainstate ={1: "images/train/cat1.jpg,
