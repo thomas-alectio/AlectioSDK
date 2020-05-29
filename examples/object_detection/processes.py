@@ -1,12 +1,10 @@
 import os
-import env
 import sys
 import torch
 import pickle
 import warnings
 import traceback
 from model import *
-import env
 from tqdm import tqdm
 import torchvision as tv
 import torch.optim as optim
@@ -26,31 +24,25 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 Tensor = torch.cuda.FloatTensor if device == "cuda" else torch.FloatTensor
 
 image_width, image_height = 416, 416
-EXPT_DIR = env.EXPT_DIR
-DATA_DIR = env.DATA_DIR
-WEIGHTS_DIR = env.WEIGHTS_DIR
-IMAGEDATA_DIR = env.IMAGEDATA_DIR
-
 
 ########## Build your own train function like below ###############################################
 
 
-def train(labeled, resume_from, ckpt_file):
+def train(args, labeled, resume_from, ckpt_file):
     """
     Train function to train on the target data 
      
     """
 
     # hyperparameters
-    batch_size = 4
+    epochs, batch_size = args["train_epochs"], args["batch_size"]
     lr = 1e-2
     weight_decay = 1e-2
-    epochs = 2
     accumulated_batches = 4
     best_mAP = 0.0
     checkpointsaveinterval = 5
-    datamap = getdatasetstate(
-        split="train"
+    datamap = getdatasetstate(args,
+        split="train",
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
     imglist = [v for k, v in datamap.items() if k in labeled]
     trainDataset = ListDataset(imglist)
@@ -60,14 +52,14 @@ def train(labeled, resume_from, ckpt_file):
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    model.load_weights(os.path.join(WEIGHTS_DIR, "darknet53.conv.74"))
+    model.load_weights(os.path.join(args["WEIGHTS_DIR"], "darknet53.conv.74"))
     model.train()
 
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
 
     # resume model and optimizer from previous loop
     if resume_from is not None:
-        model.load_weights(os.path.join(EXPT_DIR, ckpt_file))
+        model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
 
     for epoch in tqdm(range(epochs), desc="Training"):
         optimizer.zero_grad()
@@ -132,12 +124,12 @@ def train(labeled, resume_from, ckpt_file):
             model.seen += imgs.size(0)
 
         if epoch % checkpointsaveinterval == 0:
-            model.save_weights("%s/%s" % (EXPT_DIR, ckpt_file))
+            model.save_weights("%s/%s" % (args["EXPT_DIR"], ckpt_file))
 
     return
 
 
-def test(ckpt_file):
+def test(args, ckpt_file):
     """
     Test your model on the test set
     
@@ -146,7 +138,7 @@ def test(ckpt_file):
     and rebuild the app
     """
     batch_size = 16
-    datamap = getdatasetstate(split="val")
+    datamap = getdatasetstate(args, split="val")
     testDataset = ListDataset(list(datamap.values()))
     testDataloader = torch.utils.data.DataLoader(
         testDataset, batch_size=batch_size, shuffle=False, num_workers=2
@@ -154,7 +146,7 @@ def test(ckpt_file):
     config_file = "yolov3.cfg"
     print("Loading trained model to perform Test task")
     model = Darknet(config_file).to(device)
-    model.load_weights(os.path.join(EXPT_DIR, ckpt_file))
+    model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
     model.eval()
     predix = 0
     predictions = {}
@@ -214,14 +206,14 @@ def test(ckpt_file):
     return {"predictions": predictions, "labels": labels}
 
 
-def infer(unlabeled, ckpt_file):
+def infer(args, unlabeled, ckpt_file):
     """
     Infer function to infer on the unlabelled data
     
     """
 
     batch_size = 16
-    datamap = getdatasetstate(
+    datamap = getdatasetstate(args,
         split="train"
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
     unlabelledmap = [v for k, v in datamap.items() if k in unlabeled]
@@ -232,7 +224,7 @@ def infer(unlabeled, ckpt_file):
     config_file = "yolov3.cfg"
     print("Loading trained model to perform Infer task")
     model = Darknet(config_file).to(device)
-    model.load_weights(os.path.join(EXPT_DIR, ckpt_file))
+    model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
     model.eval()
     predix = 0
     predictions = {}
@@ -264,8 +256,8 @@ def infer(unlabeled, ckpt_file):
     return {"outputs": predictions}
 
 
-def getdatasetstate(split="train"):
-    dataset = FolderWithPaths(IMAGEDATA_DIR)
+def getdatasetstate(args, split="train"):
+    dataset = FolderWithPaths(args["IMAGEDATA_DIR"])
     dataset.transform = tv.transforms.Compose(
         [tv.transforms.RandomCrop(32), tv.transforms.ToTensor()]
     )
