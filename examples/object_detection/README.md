@@ -189,5 +189,5 @@ Refer to `processes.py` to get more information about the format of this functio
 Finally, to run the flask app, execute:
 
 ```
-python main.py --expname <experiment-name>
+python main.py --config config.yaml
 ```
