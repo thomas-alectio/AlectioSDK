@@ -14,7 +14,7 @@ And we will use yolo-v3 as the model.
 *** All of the following steps assume that your terminal points to the current directory, i.e. `./examples/object_detection` ***
 
 ### 1. Set up a virtual environment and install Alectio SDK
-Before getting started, please make sure you completed the [initial installation instructions](../../README.md) to set-up your environment. The most important part of that tutorial, if you are a paid customer, is that you set the backend ip address to the address that we give you by using the set_backend_ip.py script. If your backend ip is not configured, then this SDK will be non-functional.
+Before getting started, please make sure you completed the [initial installation instructions](../../README.md) to set-up your environment. The most important part of that tutorial, if you are a paid customer, is that you set the backend ip address to the address that we give you by using the set_backend_ip.py script. **If your backend ip is not configured, then this SDK will be non-functional.**
 
 To recap, the steps were setting up a virtual environment and then installing the AlectioSDK in that environment.
 
@@ -22,6 +22,12 @@ To install the AlectioSDK from within the current directory (`./examples/object_
 
 ```
 pip install ../../.
+```
+
+Make sure to also set the environment variables so that you replace the value in set_env.sh with your API key. You can also directly assign the API key to the environment variable named ALECTIO_API_KEY. 
+
+```
+export AlECTIO_API_KEY=<your downloaded api key>
 ```
 
 ### 2. Install Requirements
