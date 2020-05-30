@@ -122,7 +122,7 @@ class Pipeline(object):
             self.resume_from = None
             self.state_json = self.getstate_fn(args)
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
-            self.client.write(self.state_json, self.bucket_name, object_key, "pickle")
+            self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
             self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
 
@@ -174,7 +174,7 @@ class Pipeline(object):
             self.expt_dir, "insights_{}.pkl".format(self.curout_loop)
         )
 
-        self.client.write(insights, self.bucket_name, object_key, "pickle")
+        self.client.multi_part_upload_with_s3(insights, self.bucket_name, object_key, "pickle")
 
         return
 
@@ -194,14 +194,14 @@ class Pipeline(object):
         object_key = os.path.join(
             self.expt_dir, "test_predictions_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(predictions, self.bucket_name, object_key, "pickle")
+        self.client.multi_part_upload_with_s3(predictions, self.bucket_name, object_key, "pickle")
 
         if self.cur_loop == 0:
             # write ground truth to S3
             object_key = os.path.join(
                 self.expt_dir, "test_ground_truth.pkl".format(self.curout_loop)
             )
-            self.client.write(ground_truth, self.bucket_name, object_key, "pickle")
+            self.client.multi_part_upload_with_s3(ground_truth, self.bucket_name, object_key, "pickle")
 
         self.compute_metrics(predictions, ground_truth)
         return
@@ -263,7 +263,7 @@ class Pipeline(object):
         object_key = os.path.join(
             self.expt_dir, "metrics_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(metrics, self.bucket_name, object_key, "pickle")
+        self.client.multi_part_upload_with_s3(metrics, self.bucket_name, object_key, "pickle")
         return
 
     def infer(self, args):
@@ -290,7 +290,7 @@ class Pipeline(object):
         key = os.path.join(
             self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(remap_outputs, self.bucket_name, key, "pickle")
+        self.client.multi_part_upload_with_s3(remap_outputs, self.bucket_name, key, "pickle")
         return
 
     def __call__(self, debug=False, host="0.0.0.0", port=5000):
