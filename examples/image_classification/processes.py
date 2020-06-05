@@ -28,7 +28,7 @@ def train(labeled, resume_from, ckpt_file):
     batch_size = 4
     lr = 0.001
     momentum = 0.9
-    epochs = 20 # just for demo
+    epochs = 5 # just for demo
 
     trainset = torchvision.datasets.CIFAR10(
         root="./data", train=True, download=True, transform=transform
@@ -118,18 +118,21 @@ def infer(unlabeled, ckpt_file):
 
     correct, total = 0, 0
 
-    predictions = []
+    outputs_fin = {}
     with torch.no_grad():
-        for data in tqdm(unlabeled_loader, desc="Inferring"):
+        for i, data in tqdm(enumerate(unlabeled_loader), desc="Inferring"):
             images, labels = data
             images, labels = images.to(device), labels.to(device)
             outputs = net(images)
             _, predicted = torch.max(outputs.data, 1)
-            predictions.extend(predicted.cpu().numpy().tolist())
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
-
-    return {"outputs": predictions}
+            for j in range(len(outputs)):
+                outputs_fin[j] = {}
+                outputs_fin[j]["prediction"] = predicted[j].item()
+                outputs_fin[j]["pre_softmax"] = outputs[j].cpu().numpy()
+    
+    return {"outputs": outputs_fin}
 
 
 if __name__ == "__main__":
@@ -138,3 +141,5 @@ if __name__ == "__main__":
     ckpt_file = "ckpt_0"
 
     train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
+    test(ckpt_file=ckpt_file)
+    infer(unlabeled=[10, 20, 30], ckpt_file=ckpt_file)

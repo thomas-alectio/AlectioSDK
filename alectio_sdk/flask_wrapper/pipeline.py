@@ -9,7 +9,9 @@ import traceback
 import sys
 import os
 import time
+import boto3
 import json
+import logging
 import sklearn.metrics
 from copy import deepcopy
 
@@ -68,6 +70,7 @@ class Pipeline(object):
             os.mkdir(self.logdir)
 
         # read selected indices upto this loop
+        payload['cur_loop'] = int(payload['cur_loop'])
         self.curout_loop = payload["cur_loop"]
         self.cur_loop = payload["cur_loop"] - 1
         self.bucket_name = payload["bucket_name"]
@@ -95,7 +98,13 @@ class Pipeline(object):
 
         # get meta-data of the data set
         key = os.path.join(self.project_dir, "meta.json")
-        self.meta_data = self.client.read(self.bucket_name, key, "json")
+        bucket = boto3.resource("s3").Bucket(self.bucket_name)
+        json_load_s3 = lambda f: json.load(bucket.Object(key=f).get()["Body"])
+        self.meta_data = json_load_s3(key)
+
+
+        #self.meta_data = self.client.read(self.bucket_name, key, "json")
+        logging.info('SDK Retrieved file: {} from bucket : {}'.format(key, self.bucket_name))
 
         if self.cur_loop == 0:
             self.resume_from = None
