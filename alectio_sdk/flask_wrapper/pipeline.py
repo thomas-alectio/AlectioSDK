@@ -4,6 +4,7 @@ from flask import request
 from flask import send_file
 
 import numpy as np
+import json
 import requests
 import traceback
 import sys
@@ -20,6 +21,18 @@ from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 
 
 class Pipeline(object):
+    r"""
+    A wrapper for your `train`, `test`, and `infer` function. The arguments for your functions should be specifed
+    separately and passed to your pipeline object during creation.
+
+    Args:
+        name (str): experiment name
+        train_fn (function): function to be executed in the train cycle of the experiment.
+        test_fn (function): function to be executed in the test cycle of the experiment.
+        infer_fn (function): function to be executed in the inference cycle of the experiment.
+        getstate_fn (function): function specifying a mapping between indices and file names.
+
+    """
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn):
         self.app = Flask(name)
 
@@ -61,10 +74,22 @@ class Pipeline(object):
         else:
             return jsonify({'Message': "Loop Failed - non 200 status returned"})
 
-    def _one_loop(self, payload):
-        """ Execute one loop of active learning """
+    def _one_loop(self, args):
+        r"""
+        Executes one loop of active learning. Returns the read `payload` back to the user.
 
-        # get some global args here
+        Args:
+           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test`
+           and infer functions.
+ 
+        Example::
+
+            args = {sample_payload: 'sample_payload.json', EXPT_DIR : "./log", exp_name: "test", \
+                                                                 train_epochs: 1, batch_size: 8}
+            app._one_loop(args)    
+    
+        """
+        payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
             os.mkdir(self.logdir)
@@ -108,37 +133,32 @@ class Pipeline(object):
 
         if self.cur_loop == 0:
             self.resume_from = None
-            self.state_json = self.getstate_fn()
+            self.state_json = self.getstate_fn(args)
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
-            self.client.write(self.state_json, self.bucket_name, object_key, "pickle")
+            self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
             self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
 
         self.ckpt_file = "ckpt_{}".format(self.curout_loop)
 
-        self.train()
-        self.test()
-        self.infer()
+        self.train(args)
+        self.test(args)
+        self.infer(args)
+        
         # Drop unwanted payload values
         del payload["type"]
         del payload["cur_loop"]
         del payload["bucket_name"]
         return payload
 
-    def train(self):
-        """ run customer training process
-        fetch selected indices upto current loop
-        use expt_id to create logdir
-        pass three keyward arguments to the customer defined logic
-        labeled: labeled indices so far
-        resume_from:
-        ckpt_file
-        logdir
-        if train_fn is executed successfully, write labels to S3,
-            call PBE with success
-        if train_fn failed, call PBE with error msg
-        """
+    def train(self, args):
+        r"""
+        A wrapper for your `train` function. Returns `None`.
 
+        Args:
+           args: a dict whose keys include all of the arguments needed for your `train` function which is defined in `processes.py`.
+    
+        """
         start = time.time()
 
         self.labeled = []
@@ -152,7 +172,8 @@ class Pipeline(object):
             )
             self.labeled.extend(selected_indices)
 
-        labels = self.train_fn(
+        self.labeled = sorted(self.labeled)  # Maintain increasing order
+        labels = self.train_fn(args,
             labeled=deepcopy(self.labeled),
             resume_from=self.resume_from,
             ckpt_file=self.ckpt_file,
@@ -166,20 +187,19 @@ class Pipeline(object):
             self.expt_dir, "insights_{}.pkl".format(self.curout_loop)
         )
 
-        self.client.write(insights, self.bucket_name, object_key, "pickle")
+        self.client.multi_part_upload_with_s3(insights, self.bucket_name, object_key, "pickle")
 
         return
 
-    def test(self):
-        """ Test the performance of the model
-        write predictions and ground truth to the S3
-        bucket
-        only write ground-truth to S3 once (cur_loop==0)
-        Return:
-        -------
-            (predictions, ground_truth)
+    def test(self, args):
+        r"""
+        A wrapper for your `test` function which writes predictions and ground truth to the specified S3 bucket. Returns `None`.
+
+        Args:
+           args: a dict whose keys include all of the arguments needed for your `test` function which is defined in `processes.py`.
+    
         """
-        res = self.test_fn(ckpt_file=self.ckpt_file)
+        res = self.test_fn(args, ckpt_file=self.ckpt_file)
 
         predictions, ground_truth = res["predictions"], res["labels"]
 
@@ -187,14 +207,14 @@ class Pipeline(object):
         object_key = os.path.join(
             self.expt_dir, "test_predictions_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(predictions, self.bucket_name, object_key, "pickle")
+        self.client.multi_part_upload_with_s3(predictions, self.bucket_name, object_key, "pickle")
 
         if self.cur_loop == 0:
             # write ground truth to S3
             object_key = os.path.join(
                 self.expt_dir, "test_ground_truth.pkl".format(self.curout_loop)
             )
-            self.client.write(ground_truth, self.bucket_name, object_key, "pickle")
+            self.client.multi_part_upload_with_s3(ground_truth, self.bucket_name, object_key, "pickle")
 
         self.compute_metrics(predictions, ground_truth)
         return
@@ -225,32 +245,51 @@ class Pipeline(object):
             }
 
         if self.type == "Classification" or self.type == "Text Classification":
-            confusion_matrix = sklearn.metrics.confusion_matrix(ground_truth, predictions)
-            num_queried_per_class = {k:v for k, v in enumerate(confusion_matrix.sum(axis=1))}
-            acc_per_class = {k:v.round(3) for k, v in enumerate(confusion_matrix.diagonal() / confusion_matrix.sum(axis=1))}
+            confusion_matrix = sklearn.metrics.confusion_matrix(
+                ground_truth, predictions
+            )
+            num_queried_per_class = {
+                k: v for k, v in enumerate(confusion_matrix.sum(axis=1))
+            }
+            acc_per_class = {
+                k: v.round(3)
+                for k, v in enumerate(
+                    confusion_matrix.diagonal() / confusion_matrix.sum(axis=1)
+                )
+            }
             accuracy = sklearn.metrics.accuracy_score(ground_truth, predictions)
-            FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)  
+            FP = confusion_matrix.sum(axis=0) - np.diag(confusion_matrix)
             FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
             TP = confusion_matrix.diagonal()
             TN = confusion_matrix.sum() - (FP + FN + TP)
-            label_disagreement = {k:v.round(3) for k,v in enumerate(FP / (FP + TN))}
+            label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
 
-            metrics = {"accuracy": accuracy, "confusion_matrix": confusion_matrix, "acc_per_class": acc_per_class, \
-                        "label_disagreement": label_disagreement, "num_queried_per_class": num_queried_per_class}
+            metrics = {
+                "accuracy": accuracy,
+                "confusion_matrix": confusion_matrix,
+                "acc_per_class": acc_per_class,
+                "label_disagreement": label_disagreement,
+                "num_queried_per_class": num_queried_per_class,
+            }
 
         # save metrics to S3
         object_key = os.path.join(
             self.expt_dir, "metrics_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(metrics, self.bucket_name, object_key, "pickle")
+        self.client.multi_part_upload_with_s3(metrics, self.bucket_name, object_key, "pickle")
         return
 
-    def infer(self):
-        """ Infer on the unlabeled"""
-        # Get unlabeled
+    def infer(self, args):
+        r"""
+        A wrapper for your `infer` function which writes outputs to the specified S3 bucket. Returns `None`.
+
+        Args:
+           args: a dict whose keys include all of the arguments needed for your `infer` function which is defined in `processes.py`.  
+    
+        """
         ts = range(self.meta_data["train_size"])
-        self.unlabeled = list(set(ts) - set(self.labeled))
-        outputs = self.infer_fn(
+        self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
+        outputs = self.infer_fn(args,
             unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
         )["outputs"]
 
@@ -264,18 +303,17 @@ class Pipeline(object):
         key = os.path.join(
             self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
         )
-        self.client.write(remap_outputs, self.bucket_name, key, "pickle")
+        self.client.multi_part_upload_with_s3(remap_outputs, self.bucket_name, key, "pickle")
         return
 
     def __call__(self, debug=False, host="0.0.0.0", port=5000):
-        """Run the app
-        Paramters:
-        ----------
-        debug: boolean. Default: False
-            If set to true, then the app runs in debug mode
-            See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug
-        host: the hostname to listen to. Default: '0.0.0.0'
-            By default the app available to external world
-        port: the port of the webserver. Default: 5000
+        r"""
+        A wrapper for your `test` function which writes predictions and ground truth to the specified S3 bucket. Returns `None`.
+
+        Args:
+           debug (boolean, Default=False): If set to true, then the app runs in debug mode. See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug.
+           host (str, Default='0.0.0.0'): the hostname to be listened to.
+           port(int, Default:5000): the port of the webserver.
+    
         """
         self.app.run(debug=debug, host=host, port=5000)

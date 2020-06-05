@@ -51,6 +51,9 @@ mkdir log
 cd data
 aws s3 cp s3://alectio-resources/cocosamples . --recursive
 cd ..
+mkdir weights
+cd weights
+aws s3 cp s3://alectio-resources/cocoweights . --recursive
 ```
 
 For most part the data is preprocessed according to the Darknet convention. The only difference is that we use the `xyxy` format for the ground-truth bounding boxes.
@@ -171,9 +174,26 @@ pre_softmax (`List[List[float]]`):
 Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
 arguments of this process.
 
-### 6. Build Flask App
+### 6. Build Dataset state process
+The dataset state process helps the Alectio team to generate a reference database with a mapping between list of indices and the corresponding imagenames within your custom dataset object.
+The return of the `getdatasetstate` function is a dictionary. For example  a dict named ` trainstate ` that returns the indices(int) in the dataset object mapped to imagenames(str) will look like this
+
+```
+trainstate ={ 1: "images/train/cat1.jpg,
+              2: "images/train/dog1.jpg,
+              3: "images/train/bike0.jpg,
+              ...
+              ...
+            }
+
+```
+Refer to `processes.py` to get more information about the format of this function. This `getdatasetstate` function is the fourth and final process that needs to be created and wrapped into the our custom wrapper `pipeline` in `main.py`
+
+
+
+### 7. Build Flask App
 Finally, to run the flask app, execute:
 
 ```
-python main.py --expname <experiment-name>
+python main.py --config config.yaml
 ```

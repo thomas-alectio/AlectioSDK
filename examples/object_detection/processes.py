@@ -1,375 +1,263 @@
-import torchvision as tv
 import os
+import sys
 import torch
+import pickle
+import warnings
+import traceback
+from model import *
+from tqdm import tqdm
+import torchvision as tv
 import torch.optim as optim
 import torch.nn.functional as F
-from dataset import COCO, Transforms, collate_fn
-from model import Darknet
+from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from tqdm import tqdm
-from alectio_sdk.torch_utils.loss import HardNegativeMultiBoxesLoss
-from alectio_sdk.torch_utils.utils import Anchors, batched_gcxgcy_to_cxcy
-from alectio_sdk.torch_utils.utils import batched_cxcy_to_xy
-from FolderWithPaths import FolderWithPaths
+from datasets import *
+import numpy as np
 from PIL import Image, ImageFile
+from FolderWithPaths import FolderWithPaths
+from alectio_sdk.torch_utils.utils import non_max_suppression, bbox_iou
 
+warnings.filterwarnings("ignore")
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+Tensor = torch.cuda.FloatTensor if device == "cuda" else torch.FloatTensor
 
-EXPT_DIR = "./log"
-DATA_DIR = "./data"
-TRAINDATA_DIR = "./data/images/"
-WEIGHTS_DIR = "./weights"
-
-# building anchor priors on one image
-# the all image are resize to 416, 416
 image_width, image_height = 416, 416
 
-# config the dimension and stride of each
-# model of anchor
-
-configs = [
-    # anchors on 13 x 13 grid
-    {
-        "width": 116,
-        "height": 90,
-        "x_stride": image_width // 13,
-        "y_stride": image_height // 13,
-    },
-    {
-        "width": 156,
-        "height": 198,
-        "x_stride": image_width // 13,
-        "y_stride": image_height // 13,
-    },
-    {
-        "width": 373,
-        "height": 326,
-        "x_stride": image_width // 13,
-        "y_stride": image_height // 13,
-    },
-    # anchors on 26 x 26 grids
-    {
-        "width": 30,
-        "height": 61,
-        "x_stride": image_width // 26,
-        "y_stride": image_height // 26,
-    },
-    {
-        "width": 62,
-        "height": 45,
-        "x_stride": image_width // 26,
-        "y_stride": image_height // 26,
-    },
-    {
-        "width": 59,
-        "height": 119,
-        "x_stride": image_width // 26,
-        "y_stride": image_height // 26,
-    },
-    # anchors on 52 x 52 grid
-    {
-        "width": 10,
-        "height": 13,
-        "x_stride": image_width // 52,
-        "y_stride": image_height // 52,
-    },
-    {
-        "width": 16,
-        "height": 30,
-        "x_stride": image_width // 52,
-        "y_stride": image_height // 52,
-    },
-    {
-        "width": 33,
-        "height": 23,
-        "x_stride": image_width // 52,
-        "y_stride": image_height // 52,
-    },
-]
-
-# genrate anchors priors based on above config
-# anchors are normalized according to image dim
-# and they should follow xyxy convention
-anchors = Anchors(configs, image_width, image_height)
+########## Build your own train function like below ###############################################
 
 
-# helper functions used to transform predictions
-def bbox_transform(batched_prediction):
-    # apply sigmoid to bbox coordinate and objectness score
-    batched_prediction[..., :5] = torch.sigmoid(batched_prediction[..., :5])
-    predicted_boxes = batched_prediction[..., :4]
-    predicted_objectness = batched_prediction[..., 4]
-    predicted_class_dist = batched_prediction[..., 5:]
-    return predicted_boxes, predicted_objectness, predicted_class_dist
+def train(args, labeled, resume_from, ckpt_file):
+    """
+    Train function to train on the target data
 
+    """
 
-def train(labeled, resume_from, ckpt_file):
     # hyperparameters
-    batch_size = 16
+    epochs, batch_size = args["train_epochs"], args["batch_size"]
     lr = 1e-2
     weight_decay = 1e-2
-    epochs = 1
-
-    coco = COCO(DATA_DIR, Transforms(), samples=labeled, train=True)
-    loader = DataLoader(
-        coco, shuffle=True, batch_size=batch_size, collate_fn=collate_fn
+    accumulated_batches = 4
+    best_mAP = 0.0
+    checkpointsaveinterval = 5
+    datamap = getdatasetstate(args,
+        split="train",
+    )  ##### Since our dataset object accepts list of imagenames we are using the state function again
+    imglist = [v for k, v in datamap.items() if k in labeled]
+    trainDataset = ListDataset(imglist)
+    trainDataloader = torch.utils.data.DataLoader(
+        trainDataset, batch_size=batch_size, shuffle=True, num_workers=2
     )
 
     config_file = "yolov3.cfg"
     model = Darknet(config_file).to(device)
-    # ckpt = torch.load(os.path.join(WEIGHTS_DIR, 'yolov3-tiny-prn.weights'))
-    # model.load_state_dict(ckpt["model"])
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    model.load_weights(os.path.join(args["WEIGHTS_DIR"], "darknet53.conv.74"))
+    model.train()
+
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
 
     # resume model and optimizer from previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(EXPT_DIR, resume_from))
-        model.load_state_dict(ckpt["model"])
-        optimizer.load_state_dict(ckpt["optimizer"])
-    else:
-        getdatasetstate()
+        model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
 
-    # loss function
-    priors = anchors.normalize("xyxy")
-    loss_fn = HardNegativeMultiBoxesLoss(priors, device=device)
-
-    model.train()
     for epoch in tqdm(range(epochs), desc="Training"):
-        for img, boxes, labels in loader:
-            img = img.to(device)
-
-            # 3 predictions from 3 yolo layers
-            output = model(img)
-
-            # batch predictions on each image
-            batched_prediction = []
-            for p in output:  # (bacth_size, 3, gx, gy, 85)
-                batch_size = p.shape[0]
-                p = p.view(batch_size, -1, 85)
-
-                batched_prediction.append(p)
-
-            batched_prediction = torch.cat(batched_prediction, dim=1)
-
-            """
-            (batch_size, n_priors, 85)
-
-            the last dim of batched_prediction represent the predicted box
-            batched_prediction[...,:4] is the coordinate of the predicted bbox
-            batched_prediction[...,4] is the objectness score
-            batched_prediction[...,5:] is the pre-softmax class distribution
-
-            we need to apply some transforms to the those predictions
-            before we can use HardNegativeMultiBoxesLoss
-            In particular, the predicted bbox need to be relative to
-            normalized anchor priors
-            we will define another function bbox_transform
-            to do those transform, since it will be used by other processes
-            as well.
-            see documentation on HardNegativeMultiBoxesLoss
-            on its input parameters
-            """
-
-            (
-                predicted_boxes,
-                predicted_objectness,
-                predicted_class_dist,
-            ) = bbox_transform(batched_prediction)
-
-            loss = loss_fn(
-                predicted_boxes,
-                predicted_objectness,
-                predicted_class_dist,
-                boxes,
-                labels,
+        optimizer.zero_grad()
+        losses_x = (
+            losses_y
+        ) = (
+            losses_w
+        ) = (
+            losses_h
+        ) = (
+            losses_conf
+        ) = losses_cls = losses_recall = losses_precision = batch_loss = 0.0
+        for n_batch, (_, imgs, targets) in enumerate(trainDataloader):
+            imgs = Variable(imgs.type(Tensor))
+            targets = Variable(targets.type(Tensor), requires_grad=False)
+            loss = model(imgs, targets)
+            loss.backward()
+            if ((n_batch + 1) % accumulated_batches == 0) or (
+                n_batch == len(trainDataloader) - 1
+            ):
+                optimizer.step()
+                optimizer.zero_grad()
+            losses_x += model.losses["x"]
+            losses_y += model.losses["y"]
+            losses_w += model.losses["w"]
+            losses_h += model.losses["h"]
+            losses_conf += model.losses["conf"]
+            losses_cls += model.losses["cls"]
+            losses_recall += model.losses["recall"]
+            losses_precision += model.losses["precision"]
+            batch_loss += loss.item()
+            loss_data = "%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\t%.5f\n" % (
+                model.losses["x"],
+                model.losses["y"],
+                model.losses["w"],
+                model.losses["h"],
+                model.losses["conf"],
+                model.losses["cls"],
+                loss.item(),
+                model.losses["recall"],
+                model.losses["precision"],
             )
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            print(
+                "[Epoch %d/%d, Batch %d/%d] [Losses: x %f, y %f, w %f, h %f, conf %f, cls %f, total %f, recall: %.5f, precision: %.5f]"
+                % (
+                    epoch,
+                    epochs,
+                    n_batch,
+                    len(trainDataloader),
+                    model.losses["x"],
+                    model.losses["y"],
+                    model.losses["w"],
+                    model.losses["h"],
+                    model.losses["conf"],
+                    model.losses["cls"],
+                    loss.item(),
+                    model.losses["recall"],
+                    model.losses["precision"],
+                )
+            )
+            model.seen += imgs.size(0)
 
-        # save ckpt for this loop depending on save_every
-        ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
-        torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
+        if epoch % checkpointsaveinterval == 0:
+            model.save_weights("%s/%s" % (args["EXPT_DIR"], ckpt_file))
 
     return
 
-    torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
-    return
 
+def test(args, ckpt_file):
+    """
+    Test your model on the test set
 
-def test(ckpt_file):
+    Note : The compute metrics part is implemented in pipeline.py for a set of
+    object detection metrics, edit and include your own metrics if necessary
+    and rebuild the app
+    """
     batch_size = 16
-    coco = COCO(DATA_DIR, Transforms(), train=False)
-    loader = DataLoader(
-        coco, shuffle=False, batch_size=batch_size, collate_fn=collate_fn
+    datamap = getdatasetstate(args, split="val")
+    testDataset = ListDataset(list(datamap.values()))
+    testDataloader = torch.utils.data.DataLoader(
+        testDataset, batch_size=batch_size, shuffle=False, num_workers=2
     )
-
     config_file = "yolov3.cfg"
+    print("Loading trained model to perform Test task")
     model = Darknet(config_file).to(device)
-
-    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
-    model.load_state_dict(ckpt["model"])
-
+    model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
     model.eval()
+    predix = 0
+    predictions = {}
+    labels = {}
+    for n_batch, (_, imgs, targets) in enumerate(
+        tqdm(testDataloader, desc="Running Inference on Test set")
+    ):
+        imgs = Variable(imgs.type(Tensor))
 
-    # batch predictions from the entire test set
-    predictions = []
+        with torch.no_grad():
+            outputs, _ = model(imgs)
+            outputs = non_max_suppression(outputs, 80, conf_thres=0.5, nms_thres=0.4)
 
-    # keep track of ground-truth boxes and label
-    labels = []
-    with torch.no_grad():
-        for img, boxes, class_labels in tqdm(loader, desc="Testing"):
-            img = img.to(device)
-            # get inference output
-            output = model(img)
+        for preds, target in zip(outputs, targets):
+            if preds is not None:
+                predictions[predix] = {
+                    "boxes": preds[:, :4].cpu().numpy().tolist(),
+                    "objects": preds[:, -1].cpu().numpy().tolist(),
+                    "scores": preds[:, 4].cpu().numpy().tolist(),
+                }
+                if any(target[:, -1] > 0):
+                    rawboxes = target[target[:, -1] > 0, 1:]
+                    converted_boxes = np.empty_like(rawboxes)
+                    converted_boxes[:, 0] = rawboxes[:, 0] - rawboxes[:, 2] / 2
+                    converted_boxes[:, 1] = rawboxes[:, 1] - rawboxes[:, 3] / 2
+                    converted_boxes[:, 2] = rawboxes[:, 0] + rawboxes[:, 2] / 2
+                    converted_boxes[:, 3] = rawboxes[:, 1] + rawboxes[:, 3] / 2
 
-            for b, c in zip(boxes, class_labels):
-                labels.append((b, c))
+                    converted_boxes *= image_height
 
-            # batch predictions from 3 yolo layers
-            batched_prediction = []
-            for p in output:  # (bacth_size, 3, gx, gy, 85)
-                p = p.view(p.shape[0], -1, 85)
-                batched_prediction.append(p)
+                    labels[predix] = {
+                        "boxes": converted_boxes.tolist(),
+                        "objects": target[target[:, -1] > 0, 0].cpu().numpy().tolist(),
+                    }
+                else:
+                    labels[predix] = {"boxes": [], "objects": []}
 
-            batched_prediction = torch.cat(batched_prediction, dim=1)
-            predictions.append(batched_prediction)
+                predix += 1
+            else:
+                predictions[predix] = {"boxes": [], "objects": [], "scores": []}
 
-    predictions = torch.cat(predictions, dim=0)
+                if any(target[:, -1] > 0):
+                    rawboxes = target[target[:, -1] > 0, 1:]
+                    converted_boxes = np.empty_like(rawboxes)
+                    converted_boxes[:, 0] = rawboxes[:, 0] - rawboxes[:, 2] / 2
+                    converted_boxes[:, 1] = rawboxes[:, 1] - rawboxes[:, 3] / 2
+                    converted_boxes[:, 2] = rawboxes[:, 0] + rawboxes[:, 2] / 2
+                    converted_boxes[:, 3] = rawboxes[:, 1] + rawboxes[:, 3] / 2
+                    labels[predix] = {
+                        "boxes": converted_boxes.tolist(),
+                        "objects": target[target[:, -1] > 0, 0].cpu().numpy().tolist(),
+                    }
+                else:
+                    labels[predix] = {"boxes": [], "objects": []}
+                predix += 1
 
-    # apply nms to predicted bounding boxes
-    predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
-        predictions
+    return {"predictions": predictions, "labels": labels}
+
+
+def infer(args, unlabeled, ckpt_file):
+    """
+    Infer function to infer on the unlabelled data
+
+    """
+
+    batch_size = 16
+    datamap = getdatasetstate(args,
+        split="train"
+    )  ##### Since our dataset object accepts list of imagenames we are using the state function again
+    unlabelledmap = [v for k, v in datamap.items() if k in unlabeled]
+    testDataset = ListDataset(unlabelledmap)
+    testDataloader = torch.utils.data.DataLoader(
+        testDataset, batch_size=batch_size, shuffle=False, num_workers=2
     )
-
-    # the predicted boxes are in log space relative to the anchor priors
-    # bring them back to normalized xyxy format
-    cxcy_priors = anchors.normalize("cxcy")
-
-    # expand the priors to match the dimension of predicted_boxes
-    batched_cxcy_priors = cxcy_priors.unsqueeze(0).repeat(
-        predicted_boxes.shape[0], 1, 1
-    )
-
-    predicted_boxes = batched_gcxgcy_to_cxcy(predicted_boxes, batched_cxcy_priors)
-
-    del batched_cxcy_priors
-    # convert predicted_boxes to xyxy format and perform nms
-    xyxy = batched_cxcy_to_xy(predicted_boxes)
-    del predicted_boxes  # (no longer need cxcy format)
-
-    # get predicted object
-    # apply softmax to the predicted class distribution
-    # note that bbox_tranform does not apply softmax
-    # because the loss we are using requires us to use raw output
-    predicted_objects = torch.argmax(F.softmax(predicted_class_dist, dim=-1), dim=-1)
-
-    # predictions on the test set (value of "predictions" of the return)
-    prd = {}
-    for i in range(len(coco)):
-        # get boxes, scores, and objects on each image
-        _xyxy, _scores = xyxy[i], predicted_objectness[i]
-        _objects = predicted_objects[i]
-
-        keep = tv.ops.nms(_xyxy, _scores, 0.5)
-        boxes, scores, objects = _xyxy[keep], _scores[keep], _objects[keep]
-
-        prd[i] = {
-            "boxes": boxes.cpu().numpy().tolist(),
-            "objects": objects.cpu().numpy().tolist(),
-            "scores": scores.cpu().numpy().tolist(),
-        }
-
-    # ground-truth of the test set
-    # skip "difficulties" field, because every object in COCO
-    # should be considered reasonable
-    lbs = {}
-    for i in range(len(coco)):
-        boxes, class_labels = labels[i]
-
-        lbs[i] = {"boxes": boxes.cpu().numpy().tolist(), "objects": class_labels}
-
-    return {"predictions": prd, "labels": lbs}
-
-
-def infer(unlabeled, ckpt_file):
-    coco = COCO(DATA_DIR, Transforms(), samples=unlabeled, train=True)
-    loader = DataLoader(coco, shuffle=False, batch_size=16, collate_fn=collate_fn)
-
     config_file = "yolov3.cfg"
+    print("Loading trained model to perform Infer task")
     model = Darknet(config_file).to(device)
-    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
-    model.load_state_dict(ckpt["model"])
-
+    model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
     model.eval()
+    predix = 0
+    predictions = {}
+    labels = {}
+    for n_batch, (_, imgs, targets) in enumerate(
+        tqdm(testDataloader, desc="Running Inference on Unlabelled pool")
+    ):
+        imgs = Variable(imgs.type(Tensor))
 
-    # batch predictions from the entire test set
-    predictions = []
+        with torch.no_grad():
+            _, presig = model(imgs)
+            formatboxes = presig.new(presig.shape)
+            formatboxes[:, :, 0] = presig[:, :, 0] - presig[:, :, 2] / 2
+            formatboxes[:, :, 1] = presig[:, :, 1] - presig[:, :, 3] / 2
+            formatboxes[:, :, 2] = presig[:, :, 0] + presig[:, :, 2] / 2
+            formatboxes[:, :, 3] = presig[:, :, 1] + presig[:, :, 3] / 2
+            presig[:, :, :4] = formatboxes[:, :, :4]
 
-    with torch.no_grad():
-        for img, _, _ in tqdm(loader, desc="Inferring"):
-            img = img.to(device)
-            # get inference output
-            output = model(img)
+            for i, logit in enumerate(presig):
+                true_mask = (logit[:, 4] >= 0.5).squeeze()
+                logit = logit[true_mask]
+                predictions[predix] = {
+                    "boxes": logit[:, :4].cpu().numpy().tolist(),
+                    "pre_softmax": logit[:, 5:].cpu().numpy().tolist(),
+                    "scores": logit[:, 4].cpu().numpy().tolist(),
+                }
+                predix += 1
 
-            # batch predictions from 3 yolo layers
-            batched_prediction = []
-            for p in output:  # (bacth_size, 3, gx, gy, 85)
-                p = p.view(p.shape[0], -1, 85)
-                batched_prediction.append(p)
-
-            batched_prediction = torch.cat(batched_prediction, dim=1)
-            predictions.append(batched_prediction)
-
-    predictions = torch.cat(predictions, dim=0)
-
-    # apply nms to predicted bounding boxes
-    predicted_boxes, predicted_objectness, predicted_class_dist = bbox_transform(
-        predictions
-    )
-
-    # the predicted boxes are in log space relative to the anchor priors
-    # bring them back to normalized xyxy format
-    cxcy_priors = anchors.normalize("cxcy")
-
-    # expand the priors to match the dimension of predicted_boxes
-    batched_cxcy_priors = cxcy_priors.unsqueeze(0).repeat(
-        predicted_boxes.shape[0], 1, 1
-    )
-
-    predicted_boxes = batched_gcxgcy_to_cxcy(predicted_boxes, batched_cxcy_priors)
-
-    del batched_cxcy_priors
-
-    # convert predicted_boxes to xyxy format and perform nms
-    xyxy = batched_cxcy_to_xy(predicted_boxes)
-
-    del predicted_boxes  # (no longer need cxcy format)
-
-    # class distribution is part of the return
-    # do not apply softmax to the predicted class distribution
-    # as we will do it internally for efficiency
-    outputs = {}
-    for i in range(len(coco)):
-        # get boxes, scores, and objects on each image
-        _xyxy, _scores = xyxy[i], predicted_objectness[i]
-        _pre_softmax = predicted_class_dist[i]
-        keep = tv.ops.nms(_xyxy, _scores, 0.5)
-        boxes, scores, pre_softmax = _xyxy[keep], _scores[keep], _pre_softmax[keep]
-        outputs[i] = {
-            "boxes": boxes.cpu().numpy().tolist(),
-            "pre_softmax": pre_softmax.cpu().numpy().tolist(),
-            "scores": scores.cpu().numpy().tolist(),
-        }
-
-    return {"outputs": outputs}
+    return {"outputs": predictions}
 
 
-def getdatasetstate():
-    dataset = FolderWithPaths(TRAINDATA_DIR)
+def getdatasetstate(args, split="train"):
+    dataset = FolderWithPaths(args["IMAGEDATA_DIR"])
     dataset.transform = tv.transforms.Compose(
         [tv.transforms.RandomCrop(32), tv.transforms.ToTensor()]
     )
@@ -378,7 +266,7 @@ def getdatasetstate():
     loader = DataLoader(dataset, batch_size=batchsize, num_workers=2, shuffle=False)
     for i, (_, _, paths) in enumerate(loader):
         for path in paths:
-            if "train" in path:
+            if split in path:
                 trainpath[i] = path
     return trainpath
 
@@ -387,9 +275,11 @@ if __name__ == "__main__":
     # debug
     # train
 
-    labeled = list(range(10))
+    labeled = list(range(300))
     resume_from = None
     ckpt_file = "ckpt_0"
     logdir = "test"
 
     train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
+    print("Testing")
+    test(ckpt_file)
