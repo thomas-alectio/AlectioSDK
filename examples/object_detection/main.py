@@ -20,5 +20,5 @@ app = Pipeline(
 )
 
 if __name__ == "__main__":
-    app._one_loop(args)
-    #app(debug=True)
+    #app._one_loop(args)
+    app(debug=True)
