@@ -49,7 +49,7 @@ and adding your AWS credentials. Next, you can create a data and a log directory
 mkdir data
 mkdir log
 cd data
-aws s3 cp s3://alectio-resources/cocosamples . --recursive
+aws s3 cp s3://alectio-coco/COCO-mega . --recursive
 cd ..
 mkdir weights
 cd weights
