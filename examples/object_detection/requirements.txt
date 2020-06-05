@@ -12,3 +12,4 @@ zipp==3.1.0
 flask
 pandas
 scikit-image
+pyyaml
