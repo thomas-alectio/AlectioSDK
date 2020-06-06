@@ -96,8 +96,8 @@ class Pipeline(object):
 
         # read selected indices upto this loop
         payload['cur_loop'] = int(payload['cur_loop'])
-        self.curout_loop = payload["cur_loop"]
-        self.cur_loop = payload["cur_loop"] - 1
+        #self.curout_loop = payload["cur_loop"]
+        self.cur_loop = payload["cur_loop"]
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -137,9 +137,9 @@ class Pipeline(object):
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
-            self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
+            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
 
-        self.ckpt_file = "ckpt_{}".format(self.curout_loop)
+        self.ckpt_file = "ckpt_{}".format(self.cur_loop)
 
         self.train(args)
         self.test(args)
@@ -184,7 +184,7 @@ class Pipeline(object):
         # @TODO compute insights from labels
         insights = {"train_time": end - start}
         object_key = os.path.join(
-            self.expt_dir, "insights_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "insights_{}.pkl".format(self.cur_loop)
         )
 
         self.client.multi_part_upload_with_s3(insights, self.bucket_name, object_key, "pickle")
@@ -205,14 +205,14 @@ class Pipeline(object):
 
         # write predictions and labels to S3
         object_key = os.path.join(
-            self.expt_dir, "test_predictions_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
         )
         self.client.multi_part_upload_with_s3(predictions, self.bucket_name, object_key, "pickle")
 
         if self.cur_loop == 0:
             # write ground truth to S3
             object_key = os.path.join(
-                self.expt_dir, "test_ground_truth.pkl".format(self.curout_loop)
+                self.expt_dir, "test_ground_truth.pkl".format(self.cur_loop)
             )
             self.client.multi_part_upload_with_s3(ground_truth, self.bucket_name, object_key, "pickle")
 
@@ -274,7 +274,7 @@ class Pipeline(object):
 
         # save metrics to S3
         object_key = os.path.join(
-            self.expt_dir, "metrics_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "metrics_{}.pkl".format(self.cur_loop)
         )
         self.client.multi_part_upload_with_s3(metrics, self.bucket_name, object_key, "pickle")
         return
@@ -301,7 +301,7 @@ class Pipeline(object):
 
         # write the output to S3
         key = os.path.join(
-            self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop)
         )
         self.client.multi_part_upload_with_s3(remap_outputs, self.bucket_name, key, "pickle")
         return
