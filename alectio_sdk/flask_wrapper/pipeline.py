@@ -33,14 +33,14 @@ class Pipeline(object):
         getstate_fn (function): function specifying a mapping between indices and file names.
 
     """
-    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn,args):
         self.app = Flask(name)
 
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
-
+        self.args =args 
         self.client = S3Client()
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -63,7 +63,7 @@ class Pipeline(object):
             "type": request.get_json()["type"],
         }
 
-        returned_payload = self._one_loop(payload)
+        returned_payload = self._one_loop(payload,self.args)
         backend_ip = self.config["backend_ip"]
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
@@ -74,7 +74,7 @@ class Pipeline(object):
         else:
             return jsonify({'Message': "Loop Failed - non 200 status returned"})
 
-    def _one_loop(self, args):
+    def _one_loop(self,payload, args):
         r"""
         Executes one loop of active learning. Returns the read `payload` back to the user.
 
@@ -89,7 +89,7 @@ class Pipeline(object):
             app._one_loop(args)    
     
         """
-        payload = json.load(open(args["sample_payload"]))
+        #payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
             os.mkdir(self.logdir)
