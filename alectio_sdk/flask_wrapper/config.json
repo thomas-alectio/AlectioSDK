@@ -1,5 +1,5 @@
 {
-    "backend_route": "127.0.0.1:5000/end_of_task",
-    "sandbox_bucket": "",
-    "backend_ip": ""
+  "sandbox_bucket": "", 
+  "backend_ip": "", 
+  "backend_route": "127.0.0.1:5000/end_of_task"
 }

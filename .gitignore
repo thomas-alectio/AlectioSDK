@@ -1,3 +1,13 @@
+# SDK metadata
+alectio_sdk/flask_wrapper/config.json
+images/
+labels/
+test_labels.txt
+train_labels.txt
+
+# OSX generated files
+.DS_Store
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 log/

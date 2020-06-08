@@ -10,7 +10,9 @@ import traceback
 import sys
 import os
 import time
+import boto3
 import json
+import logging
 import sklearn.metrics
 from copy import deepcopy
 
@@ -31,14 +33,14 @@ class Pipeline(object):
         getstate_fn (function): function specifying a mapping between indices and file names.
 
     """
-    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn,args):
         self.app = Flask(name)
 
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
-
+        self.args =args 
         self.client = S3Client()
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -61,14 +63,18 @@ class Pipeline(object):
             "type": request.get_json()["type"],
         }
 
-        returned_payload = self._one_loop(payload)
+        returned_payload = self._one_loop(payload,self.args)
         backend_ip = self.config["backend_ip"]
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
-        r = requests.post(url=url, json=returned_payload)
-        return jsonify({"Message": "LoopComplete"})
+        status = requests.post(url=url, json=returned_payload, auth=('auth', os.environ['ALECTIO_API_KEY'])).status_code
+        if status == 200:
+            logging.info('Experiment {} running'.format(payload['experiment_id']))
+            return jsonify({"Message": "Loop Started - 200 status returned"})
+        else:
+            return jsonify({'Message': "Loop Failed - non 200 status returned"})
 
-    def _one_loop(self, args):
+    def _one_loop(self,payload, args):
         r"""
         Executes one loop of active learning. Returns the read `payload` back to the user.
 
@@ -83,14 +89,15 @@ class Pipeline(object):
             app._one_loop(args)    
     
         """
-        payload = json.load(open(args["sample_payload"]))
+        #payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
             os.mkdir(self.logdir)
 
         # read selected indices upto this loop
-        self.curout_loop = payload["cur_loop"]
-        self.cur_loop = payload["cur_loop"] - 1
+        payload['cur_loop'] = int(payload['cur_loop'])
+        #self.curout_loop = payload["cur_loop"]
+        self.cur_loop = payload["cur_loop"]
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -116,7 +123,13 @@ class Pipeline(object):
 
         # get meta-data of the data set
         key = os.path.join(self.project_dir, "meta.json")
-        self.meta_data = self.client.read(self.bucket_name, key, "json")
+        bucket = boto3.resource("s3").Bucket(self.bucket_name)
+        json_load_s3 = lambda f: json.load(bucket.Object(key=f).get()["Body"])
+        self.meta_data = json_load_s3(key)
+
+
+        #self.meta_data = self.client.read(self.bucket_name, key, "json")
+        logging.info('SDK Retrieved file: {} from bucket : {}'.format(key, self.bucket_name))
 
         if self.cur_loop == 0:
             self.resume_from = None
@@ -124,9 +137,9 @@ class Pipeline(object):
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
-            self.resume_from = "ckpt_{}".format(self.curout_loop - 1)
+            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
 
-        self.ckpt_file = "ckpt_{}".format(self.curout_loop)
+        self.ckpt_file = "ckpt_{}".format(self.cur_loop)
 
         self.train(args)
         self.test(args)
@@ -171,7 +184,7 @@ class Pipeline(object):
         # @TODO compute insights from labels
         insights = {"train_time": end - start}
         object_key = os.path.join(
-            self.expt_dir, "insights_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "insights_{}.pkl".format(self.cur_loop)
         )
 
         self.client.multi_part_upload_with_s3(insights, self.bucket_name, object_key, "pickle")
@@ -192,14 +205,14 @@ class Pipeline(object):
 
         # write predictions and labels to S3
         object_key = os.path.join(
-            self.expt_dir, "test_predictions_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
         )
         self.client.multi_part_upload_with_s3(predictions, self.bucket_name, object_key, "pickle")
 
         if self.cur_loop == 0:
             # write ground truth to S3
             object_key = os.path.join(
-                self.expt_dir, "test_ground_truth.pkl".format(self.curout_loop)
+                self.expt_dir, "test_ground_truth.pkl".format(self.cur_loop)
             )
             self.client.multi_part_upload_with_s3(ground_truth, self.bucket_name, object_key, "pickle")
 
@@ -261,7 +274,7 @@ class Pipeline(object):
 
         # save metrics to S3
         object_key = os.path.join(
-            self.expt_dir, "metrics_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "metrics_{}.pkl".format(self.cur_loop)
         )
         self.client.multi_part_upload_with_s3(metrics, self.bucket_name, object_key, "pickle")
         return
@@ -288,7 +301,7 @@ class Pipeline(object):
 
         # write the output to S3
         key = os.path.join(
-            self.expt_dir, "infer_outputs_{}.pkl".format(self.curout_loop)
+            self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop)
         )
         self.client.multi_part_upload_with_s3(remap_outputs, self.bucket_name, key, "pickle")
         return

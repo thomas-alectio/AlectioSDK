@@ -30,8 +30,8 @@ image_width, image_height = 416, 416
 
 def train(args, labeled, resume_from, ckpt_file):
     """
-    Train function to train on the target data 
-     
+    Train function to train on the target data
+
     """
 
     # hyperparameters
@@ -132,9 +132,9 @@ def train(args, labeled, resume_from, ckpt_file):
 def test(args, ckpt_file):
     """
     Test your model on the test set
-    
+
     Note : The compute metrics part is implemented in pipeline.py for a set of
-    object detection metrics, edit and include your own metrics if necessary 
+    object detection metrics, edit and include your own metrics if necessary
     and rebuild the app
     """
     batch_size = 16
@@ -209,7 +209,7 @@ def test(args, ckpt_file):
 def infer(args, unlabeled, ckpt_file):
     """
     Infer function to infer on the unlabelled data
-    
+
     """
 
     batch_size = 16
