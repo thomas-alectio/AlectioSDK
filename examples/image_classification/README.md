@@ -67,7 +67,7 @@ arguments of this process.
 Finally, to run the flask app, execute:
 
 ```
-python main.py --expname <experiment-name>
+python main.py --config config.yaml
 ```
 
 #### Return of the Infer Process
@@ -87,4 +87,4 @@ the model on training image `i`.
   - [x] label disagreement
   - [x] accuracy per class
 
-- [ ] Output should include score distribution and logits 
+- [x] Output should include score distribution and logits 
