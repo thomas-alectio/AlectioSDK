@@ -191,7 +191,7 @@ class Metrics(object):
     def getAP(self):
         r"""
         Returns:
-            AP per class as a dictionary in the format {class: AP}
+            AP per class as a dictionary
 
         """
         AP = {}
