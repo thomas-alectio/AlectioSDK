@@ -162,7 +162,7 @@ class Pipeline(object):
         start = time.time()
 
         self.labeled = []
-        for i in range(self.cur_loop + 1):
+        for i in range(self.cur_loop):
             object_key = os.path.join(
                 self.expt_dir, "selected_indices_{}.pkl".format(i)
             )
