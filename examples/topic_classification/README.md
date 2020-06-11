@@ -1,3 +1,5 @@
+# THIS README IS NOT UP-TO-DATE, WILL BE UPDATED AFTER NEW VERSION OF TOPIC CLASSIFICATION IS TESTED.
+
 # Topic Classification on DailyDialog Dataset
 
 This example is intended to show you how to build the `train`, `test` and `infer` processes for the `AlectioSDK` for topic
