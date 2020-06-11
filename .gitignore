@@ -13,6 +13,7 @@ __pycache__/
 log/
 weights/
 data/
+.data/
 *.py[cod]
 *$py.class
 

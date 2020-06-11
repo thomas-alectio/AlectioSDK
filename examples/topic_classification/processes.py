@@ -29,8 +29,8 @@ def train(args, labeled, resume_from, ckpt_file):
     momentum = 0.9
     epochs = args["train_epochs"]
 
-    if not os.path.isdir('./data'):
-        os.mkdir('./data')
+    if not os.path.isdir('./.data'):
+        os.mkdir('./.data')
 
     global train_dataset, test_dataset
     train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'](
@@ -41,8 +41,7 @@ def train(args, labeled, resume_from, ckpt_file):
     EMBED_DIM = args["EMBED_DIM"]
     NUN_CLASS = len(train_dataset.get_labels())
 
-    trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=generate_batch)    
-
+    trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(net.parameters(), lr=lr)
@@ -83,7 +82,7 @@ def train(args, labeled, resume_from, ckpt_file):
 
 def test(args, ckpt_file):
     batch_size = args["batch_size"]
-    testloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=generate_batch) 
+    testloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch) 
 
     predictions, targets = [], []
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
