@@ -8,5 +8,5 @@ WEIGHTS_DIR : "./weights"
 exp_name: "test"
 
 ### TRAIN FUNCTION ARGS ###
-train_epochs: 1
+train_epochs: 5
 batch_size: 8

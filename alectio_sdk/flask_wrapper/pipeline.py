@@ -35,21 +35,20 @@ class Pipeline(object):
     """
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
         self.app = Flask(name)
-
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
         self.args = args
         self.client = S3Client()
-
         dir_path = os.path.dirname(os.path.realpath(__file__))
-
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
-        print(self.config)
         # one loop
         self.app.add_url_rule("/one_loop", "one_loop", self.one_loop, methods=["POST"])
+        # logging
+        print('Waiting for response from backend')
+        print('After pressing triggering an experiment, it may take a few minutes before a response..')
 
     def one_loop(self):
         # Get payload args
@@ -95,8 +94,10 @@ class Pipeline(object):
 
         # read selected indices upto this loop
         payload['cur_loop'] = int(payload['cur_loop'])
-        #self.curout_loop = payload["cur_loop"]
-        self.cur_loop = payload["cur_loop"]
+        # self.curout_loop = payload["cur_loop"]
+
+        # Leave cur_loop - 1 when doing a 1 dag solution, when doing 2 dag cur_loop remains the same
+        self.cur_loop = payload["cur_loop"] - 1
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -161,7 +162,7 @@ class Pipeline(object):
         start = time.time()
 
         self.labeled = []
-        for i in range(self.cur_loop):
+        for i in range(self.cur_loop + 1):
             object_key = os.path.join(
                 self.expt_dir, "selected_indices_{}.pkl".format(i)
             )
