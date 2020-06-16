@@ -77,8 +77,7 @@ class Pipeline(object):
         Executes one loop of active learning. Returns the read `payload` back to the user.
 
         Args:
-           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test`
-           and infer functions.
+           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test` and infer functions.
  
         Example::
 

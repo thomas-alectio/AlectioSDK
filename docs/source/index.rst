@@ -16,6 +16,17 @@ Pipeline
    :members:
    :private-members:
 
+Object detection Metrics
+==========================
+.. autoclass:: metrics.object_detection._object_detection.Metrics
+   :members:
+   :private-members:
+
+Confusion Matrix class (CM)
+============================
+.. autoclass:: metrics.object_detection.CM.CM
+   :members:
+
 Indices and tables
 ==================
 

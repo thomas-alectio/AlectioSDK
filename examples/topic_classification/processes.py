@@ -1,298 +1,144 @@
-"""
-Main processes for the project
-"""
-
+import os
 import torch
+import torchtext
 import torch.optim as optim
 import torch.nn as nn
-from torchtext import data
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.data import DataLoader, Subset
+from torchtext.datasets import text_classification
 
-import time
-import os
-from collections import Counter
-import pickle
+from tqdm import tqdm
+from model import TextSentiment
 
-from dataset import TEXT, LABEL, DailyDialog, entire_data
-from model import RNN
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
-DEVICE = os.getenv("DEVICE")
-VECTOR_DIR = os.getenv("VECTOR_DIR")
-DATA_DIR = os.getenv("DATA_DIR")
-EXPT_DIR = os.getenv("EXPT_DIR")
+def generate_batch(batch):
+    label = torch.tensor([entry[0] for entry in batch])
+    text = [entry[1] for entry in batch]
+    offsets = [0] + [len(entry) for entry in text]
+    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
+    text = torch.cat(text)
+    return text, offsets, label
 
-# initialize the model
-INPUT_DIM = len(TEXT.vocab)
-EMBEDDING_DIM = 100
-HIDDEN_DIM = 256
-OUTPUT_DIM = 10
-N_LAYERS = 2
-BIDIRECTIONAL = True
-DROPOUT = 0.5
-PAD_IDX = TEXT.vocab.stoi[TEXT.pad_token]
-
-model = RNN(
-    INPUT_DIM,
-    EMBEDDING_DIM,
-    HIDDEN_DIM,
-    OUTPUT_DIM,
-    N_LAYERS,
-    BIDIRECTIONAL,
-    DROPOUT,
-    PAD_IDX,
-)
-
-model.embedding.weight.data.copy_(TEXT.vocab.vectors)
+def getdatasetstate(args={}):
+    return {k: k for k in range(120000)}
 
 
-def accuracy(outputs, targets):
-    """compute accuracy of a batch prediction"""
-    preds = torch.argmax(outputs, dim=1)
-    correct = (preds == targets).float().sum()
-    return correct / outputs.shape[0]
+def train(args, labeled, resume_from, ckpt_file):
+    batch_size = args["batch_size"]
+    lr = 4.0
+    momentum = 0.9
+    epochs = args["train_epochs"]
 
+    if not os.path.isdir('./.data'):
+        os.mkdir('./.data')
 
-def train(payload):
-    """Train the model and save the checkpoint
+    global train_dataset, test_dataset
+    train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'](
+    root='./.data', ngrams=args["N_GRAMS"], vocab=None)
 
-    payload: the payload object received from the http call
-        from the Alectio Platform.
-        It is parsed as an immutable dictionary with 3 keys
+    global VOCAB_SIZE, EMBED_DIM, NUN_CLASS
+    VOCAB_SIZE = len(train_dataset.get_vocab())
+    EMBED_DIM = args["EMBED_DIM"]
+    NUN_CLASS = len(train_dataset.get_labels())
 
-        labeled: list
-            indices of training data to be used for this active learning loop
+    trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
+    net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
+    criterion = nn.CrossEntropyLoss().to(device)
+    optimizer = optim.SGD(net.parameters(), lr=lr)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 1, gamma=0.9)
 
-        resume_from: str
-            checkpoint file to resume from. For example, in loop n
-            of active learning, the value of this key is `ckpt_(n-1)`,
-            indicating that you should resume from checkpoint saved in loop n-1
-
-        ckpt_file: str
-            checkpoint file to save. For example, in loop n of active
-            learing, the value of this key is `ckpt_n`, i.e. you
-            should save the model ckeckpoint as `ckpt_n` in your log directory
-
-    """
-
-    # which checkpoint to resume from
-    resume_from = payload["resume_from"]
-
-    # which checkpoint to save as
-    ckpt_file = payload["ckpt_file"]
-
-    # indices of data to train in this loop
-    labeled = payload["labeled"]
-
-    # training hyperparameters:
-    batch_size = 128  # batch size
-    lr = 1e-2  # learning rate
-    weight_decay = 1e-4  # weight decay
-    epochs = 2  # number of epochs. Use a more realistic number in production
-    print_fq = 20  # print progress per 20 steps
-
-    # optimizer
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
-
-    # resume model and optimizer from ckpt of the previous loop
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(EXPT_DIR, resume_from))
-        model.load_state_dict(ckpt["model"])
+        ckpt = torch.load(os.path.join(args["EXPT_DIR"], resume_from))
+        net.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
+    else:
+        getdatasetstate()
 
-    # loss function
-    loss_fn = nn.CrossEntropyLoss()
-
-    # build a dataset from data indexed by labeled
-    labeled = [int(ix) for ix in labeled]
-
-    dstr = DailyDialog(
-        path=os.path.join(DATA_DIR, "train.json"),
-        text_field=TEXT,
-        label_field=LABEL,
-        samples=labeled,
-    )
-
-    # build a data loader
-    ldtr = data.BucketIterator(
-        dstr,
-        batch_size=batch_size,
-        device=DEVICE,
-        shuffle=True,
-        sort_key=lambda x: len(x.text),
-        sort_within_batch=True,
-    )
-
-    # set to train mode
-    model.train()
-
-    # log the epoch performance for further analysis
-    writer = SummaryWriter(EXPT_DIR)
-
-    steps = 0
-    for epoch in range(epochs):
-        for batch in ldtr:
-            text, text_length = batch.text
-            outputs = model(text, text_length)
-
-            loss = loss_fn(outputs, batch.label.long())
-            acc = accuracy(outputs, batch.label.long())
+    net.train()
+    for epoch in tqdm(range(epochs), desc="Training"):
+        running_loss = 0.0
+        train_acc = 0
+        for i, data in enumerate(trainloader):
+            text, offsets, cls = data
+            text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
+            outputs = net(text, offsets)
+            loss = criterion(outputs, cls)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
-            # log to the tensorboard
-            writer.add_scalar("Loss/train", loss.item(), steps)
-            writer.add_scalar("Loss/accuracy", acc.item(), steps)
+            train_acc += (outputs.argmax(1) == cls).sum().item()
+            running_loss += loss.item()
+        scheduler.step()
 
-            steps += 1
+    print("Finished Training. Saving the model as {}".format(ckpt_file))
+    print("Training accuracy: {}".format((train_acc / len(train_dataset) * 100)))
+    ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
+    torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file))
 
-            if steps % print_fq == 0:
-                print(
-                    "Epoch: {}, Global Step: {}, Loss: {}".format(
-                        epoch, steps, loss.item()
-                    )
-                )
-
-        # save ckpt every epoch
-        ckpt = {"model": model.state_dict(), "optimizer": optimizer.state_dict()}
-        torch.save(ckpt, os.path.join(EXPT_DIR, ckpt_file))
-
-    writer.close()
     return
 
 
-def test(payload):
-    """Test the model and return the predictions and ground-truth
+def test(args, ckpt_file):
+    batch_size = args["batch_size"]
+    testloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch) 
 
-    payload: the payload object received from the http call
-        from the Alectio Platform.
-        It is parsed as an immutable dictionary with 1 key
+    predictions, targets = [], []
+    net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
+    ckpt = torch.load(os.path.join(args["EXPT_DIR"], ckpt_file))
+    net.load_state_dict(ckpt["model"])
+    net.eval()
 
-        ckpt_file: str
-            The model checkpoint file to be tested. For example,
-            in loop n of active learning, the value of this key is
-            `ckpt_n`, indicating that you should load your model
-            from `ckpt_n` in the log directory and test it
-    """
-
-    # which ckpt to test
-    ckpt_file = payload["ckpt_file"]
-
-    # create test set
-    dsts = DailyDialog(
-        path=os.path.join(DATA_DIR, "test.json"),
-        text_field=TEXT,
-        label_field=LABEL,
-        samples=None,
-    )
-
-    batch_size = 256
-
-    # create a data loader
-    # use a regular data loader without sorting samples according to its length
-    # this is because we need to build a dictionary of data index and its prediction
-    # so we cannot disrupt the order
-    ldts = data.Iterator(dsts, batch_size=batch_size, device=DEVICE, shuffle=False)
-
-    # ground-truth labels and predictions
-    lbs, prd = [], []
-
-    model.eval()
+    correct, total = 0, 0
     with torch.no_grad():
-        for batch in ldts:
-            text, text_length = batch.text
-            outputs = model(text, text_length)
-            preds = torch.argmax(outputs, dim=1)
+        for data in tqdm(testloader, desc="Testing"):
+            text, offsets, cls = data
+            text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
+            outputs = net(text, offsets)
 
-            lbs.extend(batch.label.long().cpu().numpy().tolist())
-            prd.extend(preds.cpu().numpy().tolist())
+            _, predicted = torch.max(outputs.data, 1)
+            predictions.extend(predicted.cpu().numpy().tolist())
+            targets.extend(cls.cpu().numpy().tolist())
+            total += cls.size(0)
+            correct += (predicted == cls).sum().item()
 
-    # convert lbs and prd to dict
-    lbs = {i: v for i, v in enumerate(lbs)}
-    prd = {i: v for i, v in enumerate(prd)}
-
-    return {"predictions": prd, "labels": lbs}
+    return {"predictions": predictions, "labels": targets}
 
 
-def infer(payload):
-    """Use the model to infer on the unlabeled data and return the output
+def infer(args, unlabeled, ckpt_file):
+    unlabeled = Subset(train_dataset, unlabeled)
+    unlabeled_loader = torch.utils.data.DataLoader(
+        unlabeled, batch_size=args["batch_size"], shuffle=False, num_workers=2, collate_fn=generate_batch)
 
-    payload: the payload object received from the http call
-        from the Alectio Platform.
-        It is parsed as an immutable dictionary with 2 keys
+    net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
+    ckpt = torch.load(os.path.join(args["EXPT_DIR"], ckpt_file))
+    net.load_state_dict(ckpt["model"])
+    net.eval()
 
-        ckpt_file: str
-            The checkpoint file to use to apply inference.
-            For example, in loop n of active learning, the
-            value of this key is `ckpt_n`. It means you should
-            load `ckpt_n` from the log directory to your model
-            for inference.
-
-        unlabeled: list
-            indices of the data in the training set to be used
-            for inference
-    """
-    ckpt_file = payload["ckpt_file"]
-    unlabeled = payload["unlabeled"]
-
-    # which ckpt to use to infer
-    ckpt_file = payload["ckpt_file"]
-
-    # load model state dict
-    ckpt = torch.load(os.path.join(EXPT_DIR, ckpt_file))
-    model.load_state_dict(ckpt["model"])
-
-    # create dataset
-    dsinf = DailyDialog(
-        path=os.path.join(DATA_DIR, "train.json"),
-        text_field=TEXT,
-        label_field=LABEL,
-        samples=unlabeled,
-    )
-
-    batch_size = 256
-
-    # create a data loader
-    # use a regular data loader without sorting samples according to its length
-    # this is because we need to build a dictionary of data index and its output
-    # so we cannot disrupt the order
-    ldinf = data.Iterator(dsinf, batch_size=batch_size, device=DEVICE, shuffle=False)
-
-    outputs = None
-    model.eval()
+    correct, total = 0, 0
+    outputs_fin = {}
     with torch.no_grad():
-        for batch in ldinf:
-            text, text_length = batch.text
-            _outputs = model(text, text_length)
+        for i, data in tqdm(enumerate(unlabeled_loader), desc="Inferring"):
+            text, offsets, cls = data
+            text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
+            outputs = net(text, offsets)
 
-            if outputs is None:
-                outputs = _outputs
-            else:
-                outputs = torch.cat([outputs, _outputs], dim=0)
+            _, predicted = torch.max(outputs.data, 1)
+            total += cls.size(0)
+            correct += (predicted == cls).sum().item()
+            for j in range(len(outputs)):
+                outputs_fin[j] = {}
+                outputs_fin[j]["prediction"] = predicted[j].item()
+                outputs_fin[j]["pre_softmax"] = outputs[j].cpu().numpy()
 
-    # convert outputs to list then to dict to be send to Alectio server
-    outputs = outputs.cpu().numpy().tolist()
-    outputs = {ix: d for ix, d in zip(unlabeled, outputs)}
-    return {"outputs": outputs}
-
+    return {"outputs": outputs_fin}
 
 if __name__ == "__main__":
-    # debug
-    payload = {
-        "labeled": list(range(10)),
-        "ckpt_file": "ckpt_0",
-        "resume_from": None,
-    }
-    print("Training")
-    train(payload)
+    labeled = list(range(1000))
+    resume_from = None
+    ckpt_file = "ckpt_0"
 
-    payload = {
-        "ckpt_file": "ckpt_0",
-    }
-    print("Testing")
-    test(payload)
-
-    print("Infering")
-    payload = {"ckpt_file": "ckpt_0", "unlabeled": list(range(10))}
-    infer(payload)
+    train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
+    test(ckpt_file=ckpt_file)
+    infer(unlabeled=[10, 20, 30], ckpt_file=ckpt_file)
