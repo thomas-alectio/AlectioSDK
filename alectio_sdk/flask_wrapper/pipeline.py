@@ -33,27 +33,26 @@ class Pipeline(object):
         getstate_fn (function): function specifying a mapping between indices and file names.
 
     """
-    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn,args):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
         self.app = Flask(name)
 
         self.train_fn = train_fn
         self.test_fn = test_fn
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
-        self.args =args 
+        self.args = args
         self.client = S3Client()
 
         dir_path = os.path.dirname(os.path.realpath(__file__))
 
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
-
+        print(self.config)
         # one loop
         self.app.add_url_rule("/one_loop", "one_loop", self.one_loop, methods=["POST"])
 
     def one_loop(self):
         # Get payload args
-
         payload = {
             "experiment_id": request.get_json()["experiment_id"],
             "project_id": request.get_json()["project_id"],
@@ -63,7 +62,7 @@ class Pipeline(object):
             "type": request.get_json()["type"],
         }
 
-        returned_payload = self._one_loop(payload,self.args)
+        returned_payload = self._one_loop(payload, self.args)
         backend_ip = self.config["backend_ip"]
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
@@ -74,13 +73,12 @@ class Pipeline(object):
         else:
             return jsonify({'Message': "Loop Failed - non 200 status returned"})
 
-    def _one_loop(self,payload, args):
+    def _one_loop(self, payload, args):
         r"""
         Executes one loop of active learning. Returns the read `payload` back to the user.
 
         Args:
-           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test`
-           and infer functions.
+           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test` and infer functions.
  
         Example::
 
@@ -162,17 +160,15 @@ class Pipeline(object):
         start = time.time()
 
         self.labeled = []
-        for i in range(self.cur_loop + 1):
+        for i in range(self.cur_loop):
             object_key = os.path.join(
                 self.expt_dir, "selected_indices_{}.pkl".format(i)
             )
-
             selected_indices = self.client.read(
                 self.bucket_name, object_key=object_key, file_format="pickle"
             )
             self.labeled.extend(selected_indices)
-
-        self.labeled = sorted(self.labeled)  # Maintain increasing order
+        self.labeled.sort()   # Maintain increasing order
         labels = self.train_fn(args,
             labeled=deepcopy(self.labeled),
             resume_from=self.resume_from,

@@ -8,8 +8,6 @@ from torch.utils.data import DataLoader, Subset
 import torchvision
 import torchvision.transforms as transforms
 from tqdm import tqdm
-
-import env
 from model import Net
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -20,15 +18,15 @@ transform = transforms.Compose(
 )
 
 
-def getdatasetstate():
+def getdatasetstate(args={}):
     return {k: k for k in range(50000)}
 
 
-def train(labeled, resume_from, ckpt_file):
-    batch_size = 4
+def train(args, labeled, resume_from, ckpt_file):
+    batch_size = args["batch_size"]
     lr = 0.001
     momentum = 0.9
-    epochs = 5 # just for demo
+    epochs = args["train_epochs"]
 
     trainset = torchvision.datasets.CIFAR10(
         root="./data", train=True, download=True, transform=transform
@@ -43,7 +41,7 @@ def train(labeled, resume_from, ckpt_file):
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
 
     if resume_from is not None:
-        ckpt = torch.load(os.path.join(env.EXPT_DIR, resume_from))
+        ckpt = torch.load(os.path.join(args["EXPT_DIR"], resume_from))
         net.load_state_dict(ckpt["model"])
         optimizer.load_state_dict(ckpt["optimizer"])
     else:
@@ -67,12 +65,12 @@ def train(labeled, resume_from, ckpt_file):
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
-    torch.save(ckpt, os.path.join(env.EXPT_DIR, ckpt_file))
+    torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file))
 
     return
 
 
-def test(ckpt_file):
+def test(args, ckpt_file):
     batch_size = 16
     testset = torchvision.datasets.CIFAR10(
         root="./data", train=False, download=True, transform=transform
@@ -83,7 +81,7 @@ def test(ckpt_file):
 
     predictions, targets = [], []
     net = Net().to(device)
-    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join(args["EXPT_DIR"], ckpt_file))
     net.load_state_dict(ckpt["model"])
     net.eval()
 
@@ -102,7 +100,7 @@ def test(ckpt_file):
     return {"predictions": predictions, "labels": targets}
 
 
-def infer(unlabeled, ckpt_file):
+def infer(args, unlabeled, ckpt_file):
     trainset = torchvision.datasets.CIFAR10(
         root="./data", train=True, download=True, transform=transform
     )
@@ -112,7 +110,7 @@ def infer(unlabeled, ckpt_file):
     )
 
     net = Net().to(device)
-    ckpt = torch.load(os.path.join(env.EXPT_DIR, ckpt_file))
+    ckpt = torch.load(os.path.join(args["EXPT_DIR"], ckpt_file))
     net.load_state_dict(ckpt["model"])
     net.eval()
 

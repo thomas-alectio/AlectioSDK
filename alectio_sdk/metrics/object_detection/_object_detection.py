@@ -12,45 +12,44 @@ from .CM import CM as CM
 
 
 class Metrics(object):
-    """
+    r"""
     Evaluation Metrics for object detection 
 
-       Parameters:
-       -----------
-            det_boxes: list of numpy.ndarray, 
-                one array for each image containing detected objects' bounding boxes.
-                Each array is of shape (M_i, 4), where M_i is the number of objects 
-                in the image. Bounding boxes are in xyxy-convention
-                All bounding boxes are normalized according to image dimension
+    Args:
+        det_boxes: list of numpy.ndarray, 
+            one array for each image containing detected objects' bounding boxes.
+            Each array is of shape (:math:`M_i`, 4), where :math:`M_i` is the number of objects 
+            in the image. Bounding boxes are in xyxy-convention
+            All bounding boxes are normalized according to image dimension
 
-            det_labels: list of numpy.ndarray, 
-                one array for each image containing detected objects' labels. 
-                Each array is of shape (M_i)
+        det_labels: list of numpy.ndarray, 
+            one array for each image containing detected objects' labels. 
+            Each array is of shape (:math:`M_i`)
 
-            det_scores: list of numpy.ndarray, 
-                one array for each image 
-                containing detected objects' labels' scores.
-                Each array is of shape (M_i). Object score is 
-                the objectness of each detection
+        det_scores: list of numpy.ndarray, 
+            one array for each image 
+            containing detected objects' labels' scores.
+            Each array is of shape (:math:`M_i`). Object score is 
+            the objectness of each detection
 
 
-            true_boxes: list of numpy.ndarray, 
-                one array for each image containing actual objects' bounding boxes.
-                Each array is of shape (N_i, 4), where N_i is the number of 
-                ground-truth bbox on the image.
-                Bbox in xyxy convention; each bounding box is normalized according 
-                to the image dimension
+        true_boxes: list of numpy.ndarray, 
+            one array for each image containing actual objects' bounding boxes.
+            Each array is of shape (:math:`N_i`, 4), where :math:`N_i` is the number of 
+            ground-truth bbox on the image.
+            Bbox in xyxy convention; each bounding box is normalized according 
+            to the image dimension
 
-            true_labels: list of numpy.ndarray, 
-                one array for each image containing actual objects' labels. 
-                Each tensor is of shape N_i
-            
-            num_classes: int
-                number of classes (not include background)
-                    
-            threshold: float. Default=0.5
-                IoU threshold for a prediction to be considered correct
-                with grounth-truth bouding box
+        true_labels: list of numpy.ndarray, 
+            one array for each image containing actual objects' labels. 
+            Each tensor is of shape :math:`N_i`
+        
+        num_classes: int
+            number of classes (not include background)
+                
+        threshold: float. Default=0.5
+            IoU threshold for a prediction to be considered correct
+            with grounth-truth bouding box
 
     """
 
@@ -84,9 +83,9 @@ class Metrics(object):
         self._evaluate()
 
     def _reformatboxes(self):
-        """
-        Description:
+        r"""
             Reformats detection and annotation boxes labelwise 
+
         """
         for i in range(len(self.true_boxes)):
             self.reordered_trueboxes.append(
@@ -123,8 +122,7 @@ class Metrics(object):
                     ]
 
     def _evaluate(self):
-        """
-        Description:
+        r"""
             Computes AP,Precision and recall metrics per class for current model
         
         """
@@ -191,9 +189,10 @@ class Metrics(object):
             )
 
     def getAP(self):
-        """
+        r"""
         Returns:
-            AP per class as a dictionary in the format {class: AP}
+            AP per class as a dictionary
+
         """
         AP = {}
         for c in self.AP:
@@ -201,49 +200,50 @@ class Metrics(object):
         return AP
 
     def getmAP(self):
-        """
-        Description:
-            Computes mAP 
+        r"""
+        Computes mAP 
         
         Returns:
              mAP score as float
+
         """
         return np.mean([ap for c, ap in self.AP.items()]).item()
 
     def getprecision(self):
-        """
-        Description:
-            Computes Overall Precision 
+        r"""
+        Computes Overall Precision 
         
         Returns:
              Precision score as float
+
         """
         return np.mean(
             [0 if math.isnan(prec) else prec for c, prec in self.precision.items()]
         ).item()
 
     def getrecall(self):
-        """
-        Description:
-            Computes recall
+        r"""
+        Computes recall
         
         Returns:
              Recall score as float
+
         """
         return np.mean([rec for c, rec in self.recall.items()]).item()
 
     def process_incorrect(self, detections, GTannotations, currlabel):
-        """
-        Description:
-            Function processes detection boxes to count mispredictions and 
-            update the confusion matrix
-        Arguments:
-        detections    - Detection boxes of currentlabel 
-        GTannotations - Ground Truth annotations of current image 
-        currlabel     - Label currently being processed
+        r"""
+        Function processes detection boxes to count mispredictions and 
+        update the confusion matrix
+        
+        Args:
+            detections: Detection boxes of currentlabel 
+            GTannotations: Ground Truth annotations of current image 
+            currlabel: Label currently being processed
         
         Returns:
             Currently recomputed incorrect detections confusion matrix
+
         """
         currCM = np.zeros_like(self.confusionMatrix.CM)
         for label in range(self.num_classes):
@@ -263,30 +263,32 @@ class Metrics(object):
         return currCM
 
     def calc_precision(self, truePositives, falsePositives):
-        """
-        Description:
-            Fuction computes precision
-        Inputs:
-            truePositives - True Positives envelope of current label
-            falsePositives - False Positives envelope of current label
+        r"""
+        Fuction computes precision
+        
+        Args:
+            truePositives: True Positives envelope of current label
+            falsePositives: False Positives envelope of current label
         
         Returns:
             Precision metrics as float
+
         """
         return truePositives / np.maximum(
             truePositives + falsePositives, np.finfo(np.float64).eps
         )
 
     def calc_recall(self, truePositives, nGT):
-        """
-        Description:
-            Fuction computes recall
-        Inputs:
-            truePositives - True Positives envelope of current label
-            nGT - Number of Ground truth annotations
+        r"""
+        Fuction computes recall
+
+        Args:
+            truePositives: True Positives envelope of current label
+            nGT: Number of Ground truth annotations
         
         Returns:
             Recall metrics as float
+
         """
         return truePositives / nGT
 
@@ -294,19 +296,20 @@ class Metrics(object):
         self, tp, fp, num_annotations, label, currDet, currTrue, nothingness=False
     ):
 
-        """
-        Description:
-            Recomputes confusion matrix imagewise
-        Inputs:
-            tp - number of True positives
-            fp - number of False positives
-            num_annotations - number of current ground truth annotations processed
-            label    - current label being processed
-            currDet  - current detections being processed
-            currTrue - Ground truth boxes for current image
+        r"""
+        Recomputes confusion matrix imagewise
+        
+        Args:
+            tp: number of True positives
+            fp: number of False positives
+            num_annotations: number of current ground truth annotations processed
+            label: current label being processed
+            currDet: current detections being processed
+            currTrue: Ground truth boxes for current image
         
         Returns:
             Recall metrics as float
+
         """
         ############## Update current values into confusion Matrix ###############
         if nothingness:
@@ -317,11 +320,11 @@ class Metrics(object):
         self.confusionMatrix.updateincorrectpredictions(currCM)
 
     def getCM(self):
-        """
-        Description:
-            Function returns computed Confusion matrix
-        returns:
-            Computed Confusion Matrix
+        r"""
+        Function returns computed Confusion matrix
         
+        Returns:
+            Computed Confusion Matrix
+
         """
         return self.confusionMatrix.CM

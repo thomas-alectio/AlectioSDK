@@ -1,5 +1,5 @@
 # SDK metadata
-alectio_sdk/flask_wrapper/config.json
+alectio_sdk/flask_wrapper/config.json/
 images/
 labels/
 test_labels.txt
@@ -13,6 +13,7 @@ __pycache__/
 log/
 weights/
 data/
+.data/
 *.py[cod]
 *$py.class
 
