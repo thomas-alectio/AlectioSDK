@@ -1,5 +1,5 @@
-# Image Classification on CIFAR-10
-
+# Object Segmentation on Carvana dataset
+Dataset extracted from https://www.kaggle.com/c/carvana-image-masking-challenge/overview
 This example shows you how to build `train`, `test` and `infer` processes
 for image classification problems. In particular, it will show you the format
 of the return of `test` and `infer`. For an object detection problem, those
