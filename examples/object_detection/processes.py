@@ -135,10 +135,9 @@ def test(args, ckpt_file):
     object detection metrics, edit and include your own metrics if necessary
     and rebuild the app
     """
-    batch_size = 8
+    batch_size = 16
     datamap = getdatasetstate(args, split="val")
-    # WARNING HARDCODED VALUE at 100
-    testDataset = ListDataset(list(datamap.values())[:100])
+    testDataset = ListDataset(list(datamap.values()))
     testDataloader = torch.utils.data.DataLoader(
         testDataset, batch_size=batch_size, shuffle=False, num_workers=2
     )
@@ -210,7 +209,7 @@ def infer(args, unlabeled, ckpt_file):
     Infer function to infer on the unlabelled data
     """
 
-    batch_size = 8
+    batch_size = 16
     datamap = getdatasetstate(args,
         split="train"
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
@@ -276,7 +275,7 @@ def getdatasetstate(args, split="train"):
 if __name__ == "__main__":
     # debug
     # train
-    '''
+
     labeled = list(range(300))
     resume_from = None
     ckpt_file = "ckpt_0"
@@ -285,4 +284,3 @@ if __name__ == "__main__":
     train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
     print("Testing")
     test(ckpt_file)
-    '''
