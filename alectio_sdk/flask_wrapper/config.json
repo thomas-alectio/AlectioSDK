@@ -1,5 +1,5 @@
 {
-  "sandbox_bucket": "", 
-  "backend_ip": "", 
+  "sandbox_bucket": "",
+  "backend_ip": "http://ad9b8064978b349c2aefcbb289e27b90-1345512929.us-west-2.elb.amazonaws.com/",
   "backend_route": "127.0.0.1:5000/end_of_task"
 }

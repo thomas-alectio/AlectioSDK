@@ -125,6 +125,7 @@ def infer(args, unlabeled, ckpt_file):
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
+
             for j in range(len(outputs)):
                 outputs_fin[j] = {}
                 outputs_fin[j]["prediction"] = predicted[j].item()
