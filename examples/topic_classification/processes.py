@@ -41,8 +41,7 @@ def train(args, labeled, resume_from, ckpt_file):
     EMBED_DIM = args["EMBED_DIM"]
     NUN_CLASS = len(train_dataset.get_labels())
     
-    train_dataset = Subset(train_dataset, labeled)
-    trainloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
+    trainloader = DataLoader(Subset(train_dataset, labeled), batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(net.parameters(), lr=lr)
