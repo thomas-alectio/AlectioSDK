@@ -116,7 +116,7 @@ def infer(args, unlabeled, ckpt_file):
     net.load_state_dict(ckpt["model"])
     net.eval()
 
-    correct, total = 0, 0
+    correct, total, k = 0, 0, 0
     outputs_fin = {}
     with torch.no_grad():
         for i, data in tqdm(enumerate(unlabeled_loader), desc="Inferring"):
@@ -128,9 +128,10 @@ def infer(args, unlabeled, ckpt_file):
             total += cls.size(0)
             correct += (predicted == cls).sum().item()
             for j in range(len(outputs)):
-                outputs_fin[j] = {}
-                outputs_fin[j]["prediction"] = predicted[j].item()
-                outputs_fin[j]["pre_softmax"] = outputs[j].cpu().numpy()
+                outputs_fin[k] = {}
+                outputs_fin[k]["prediction"] = predicted[j].item()
+                outputs_fin[k]["pre_softmax"] = outputs[j].cpu().numpy()
+                k += 1
 
     return {"outputs": outputs_fin}
 
