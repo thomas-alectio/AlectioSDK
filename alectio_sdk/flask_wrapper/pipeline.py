@@ -2,6 +2,7 @@ from flask import jsonify
 from flask import Flask, Response
 from flask import request
 from flask import send_file
+from waitress import serve
 
 import numpy as np
 import json
@@ -9,6 +10,7 @@ import requests
 import traceback
 import sys
 import os
+import psutil
 import time
 import boto3
 import json
@@ -18,6 +20,8 @@ from copy import deepcopy
 
 from .s3_client import S3Client
 from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 
 class Pipeline(object):
@@ -34,6 +38,10 @@ class Pipeline(object):
 
     """
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
+        sentry_sdk.init(
+            dsn="https://4eedcc29fa7844828397dca4afc2db32@o409542.ingest.sentry.io/5282336",
+            integrations=[FlaskIntegration()]
+        )
         self.app = Flask(name)
         self.train_fn = train_fn
         self.test_fn = test_fn
@@ -46,9 +54,7 @@ class Pipeline(object):
             self.config = json.load(f)
         # one loop
         self.app.add_url_rule("/one_loop", "one_loop", self.one_loop, methods=["POST"])
-        # logging
-        print('Waiting for response from backend')
-        print('After pressing triggering an experiment, it may take a few minutes before a response..')
+        self.app.add_url_rule("/end_exp", "end_exp", self.end_exp, methods=["POST"])
 
     def one_loop(self):
         # Get payload args
@@ -60,7 +66,7 @@ class Pipeline(object):
             "bucket_name": request.get_json()["bucket_name"],
             "type": request.get_json()["type"],
         }
-
+        print('Received payload from backend')
         returned_payload = self._one_loop(payload, self.args)
         backend_ip = self.config["backend_ip"]
         port = 80
@@ -77,14 +83,15 @@ class Pipeline(object):
         Executes one loop of active learning. Returns the read `payload` back to the user.
 
         Args:
-           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test` and infer functions.
- 
+           args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test`
+           and infer functions.
+
         Example::
 
             args = {sample_payload: 'sample_payload.json', EXPT_DIR : "./log", exp_name: "test", \
                                                                  train_epochs: 1, batch_size: 8}
-            app._one_loop(args)    
-    
+            app._one_loop(args)
+
         """
         #payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
@@ -93,10 +100,7 @@ class Pipeline(object):
 
         # read selected indices upto this loop
         payload['cur_loop'] = int(payload['cur_loop'])
-        # self.curout_loop = payload["cur_loop"]
-
-        # Leave cur_loop - 1 when doing a 1 dag solution, when doing 2 dag cur_loop remains the same
-        self.cur_loop = payload["cur_loop"] - 1
+        self.cur_loop = payload["cur_loop"]
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -143,7 +147,7 @@ class Pipeline(object):
         self.train(args)
         self.test(args)
         self.infer(args)
-        
+
         # Drop unwanted payload values
         del payload["type"]
         del payload["cur_loop"]
@@ -156,12 +160,12 @@ class Pipeline(object):
 
         Args:
            args: a dict whose keys include all of the arguments needed for your `train` function which is defined in `processes.py`.
-    
+
         """
         start = time.time()
 
         self.labeled = []
-        for i in range(self.cur_loop+1):
+        for i in range(self.cur_loop + 1):
             object_key = os.path.join(
                 self.expt_dir, "selected_indices_{}.pkl".format(i)
             )
@@ -194,7 +198,7 @@ class Pipeline(object):
 
         Args:
            args: a dict whose keys include all of the arguments needed for your `test` function which is defined in `processes.py`.
-    
+
         """
         res = self.test_fn(args, ckpt_file=self.ckpt_file)
 
@@ -281,8 +285,8 @@ class Pipeline(object):
         A wrapper for your `infer` function which writes outputs to the specified S3 bucket. Returns `None`.
 
         Args:
-           args: a dict whose keys include all of the arguments needed for your `infer` function which is defined in `processes.py`.  
-    
+           args: a dict whose keys include all of the arguments needed for your `infer` function which is defined in `processes.py`.
+
         """
         ts = range(self.meta_data["train_size"])
         self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
@@ -311,6 +315,21 @@ class Pipeline(object):
            debug (boolean, Default=False): If set to true, then the app runs in debug mode. See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug.
            host (str, Default='0.0.0.0'): the hostname to be listened to.
            port(int, Default:5000): the port of the webserver.
-    
+
         """
-        self.app.run(debug=debug, host=host, port=5000)
+        serve(self.app, host="0.0.0.0", port=5000)
+
+    @staticmethod
+    def shutdown_server():
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+    @staticmethod
+    def end_exp():
+        print()
+        print('======== Experiment Ended ========')
+        print('Server shutting down...')
+        p = psutil.Process(os.getpid())
+        p.terminate()

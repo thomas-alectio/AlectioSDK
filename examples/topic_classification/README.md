@@ -1,26 +1,16 @@
-# THIS README IS NOT UP-TO-DATE, WILL BE UPDATED AFTER NEW VERSION OF TOPIC CLASSIFICATION IS TESTED.
+# Topic Classification on the AG News Dataset
 
-# Topic Classification on DailyDialog Dataset
-
-This example is intended to show you how to build the `train`, `test` and `infer` processes for the `AlectioSDK` for topic
-classification problems. We will use the [DailyDialog](https://arxiv.org/abs/1710.03957) dataset. Each sample in this
-dataset is a conversation between two people. The objective is to classify the topic of their conversation. The topics are labeled as following:
+This example is intended to show you how to build the `train`, `test` and `infer` processes for the `AlectioSDK` for text
+classification problems. We will use the [AG News](https://www.kaggle.com/amananandrai/ag-news-classification-dataset) dataset. Each sample in this dataset is a news article. The objective is to identify the category that the article belongs to. The categories are as follows:
 
 | label | topic |
 | ----- | ----- |
-| 0    | Ordinary Life | 
-| 1     | School Life | 
-| 2    | Culture & Education | 
-| 3    | Attitude & Emotion | 
-| 4    | Relationship |
-| 5     | Tourism | 
-| 6    | Health | 
-| 7    | Work |
-| 8     | Politics | 
-| 9     | Finance | 
+| 1    | World | 
+| 2     | Sports | 
+| 3    | Business | 
+| 4    | Sci/Tech | 
 
-Since the size of this dataset is small, it is included in this repo in the `./data` directory. 
-
+Since the size of this dataset is large, it shall be downloaded when the program is run.
 
 *** All of the following steps assume that your terminal points to the current directory, i.e. `./examples/topic_classification` *** 
 
@@ -34,87 +24,20 @@ To install the AlectioSDK from within the current directory (`./examples/topic_c
 ```
 pip install ../../.
 ```
-### 2. Get Data and Dependencies 
 
-Install the requirements via:
-```
-pip install -r requirements.txt
-```
-
-We use `spacy` to parse the text data. The module was already
-installed as part of the requirements, but we still need to download the English 
-model for it via
-```
-python -m spacy download en
-```
-
-#### Download GloVe vectors
-We will use GloVe 6B.100d for word embedding. 
-
-We download the vectors by running:
-```
-mkdir vector
-cd vector
-wget http://nlp.stanford.edu/data/glove.6B.zip
-unzip glove.6B.zip
-cd ..
-```
-After you unzipped it, the directory structure of 
-`vector` should look like this:
-```
-├── vector 
-    ├── glove.6B.50d.txt
-    ├── glove.6B.100d.txt
-    ├── glove.6B.200d.txt
-    └── glove.6B.300d.txt
-```
-In this example, we will only need `glove.6B.100d.txt`.
-
-#### Create a log directory
+#### 2. Create a log directory
 Create a log directory in the project root to save checkpoints
 ```
 mkdir log
 ```
-#### Set Environment Variables 
-To set the environment variables, we run
-
-```
-source setenv.sh 
-```
-The variables are as follows:
-
-| variable | meaning | 
-| -------- | ------- |
-| VECTOR_DIR | directory where word vectors are saved |
-| EXPT_DIR | directory where experiment log and checkpoints are saved |
-| DATA_DIR | directory where processed data is saved | 
-| DEVICE   | cpu or gpu device where model training/testing/inference takes place | 
-| FLASK_ENV | the environment for the Flask app we build |
-
-### 3. Build Dataset object
-We will use `pytorch` and `torchtext` for this project. We build a dataset
-object `DailyDialog`, text and label fields there. Please checkout the code
-in [`dataset.py`](./dataset.py) for more details.
-
-### 4. Build Model
-We will use a 2-layer bidirectional LSTM for text classification. For
-the architecture of the model see [`model.py`](./model.py).
-
-### 5. Build Train, Test and Infer Processes
-The train, test and infer processes are implemented in [`processes.py`](./processes.py).  
-For more information on each, refer to the doc strings of each function.
-
-
-Run this step via
-```python
-python processes.py
-```
+### 3. Build Train, Test and Infer Processes
+The train, test and infer processes are implemented in [`processes.py`](./processes.py).
 
 ### 6. Build Flask App 
 Finally, to run the flask app, execute:
 
 ```
-python main.py --expname <experiment-name>
+python main.py --config config.yaml
 ```
 ## Return Types
 
@@ -157,4 +80,22 @@ The value of `labels` looks like
 ```
 where `yi` is the integer ground-truth class label of sample `i`.
 
-<!-- The infer process is missing here -->
+#### Format of the Infer Outputs
+Return from the `infer` process will be used to understand which data points to labeled
+in the next step.
+
+```
+outputs_fin = {}
+for j in range(len(outputs)):
+    outputs_fin[j] = {}
+    outputs_fin[j]["prediction"] = predicted[j].item()
+    outputs_fin[j]["pre_softmax"] = outputs[j].cpu().numpy()
+```
+
+The above code block can be used as a template. Here, the returned items should be a dictionary with
+the following information for each batch: predictions by the model, and the activations of the penultimate layer.
+
+Finally, after filling that up, we return the result of the `infer` step like so:
+```
+return {"outputs": outputs_fin}
+```
