@@ -41,7 +41,8 @@ def train(args, labeled, resume_from, ckpt_file):
     EMBED_DIM = args["EMBED_DIM"]
     NUN_CLASS = len(train_dataset.get_labels())
     
-    trainloader = DataLoader(Subset(train_dataset, labeled), batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
+    chosen_train_dataset = Subset(train_dataset, labeled)
+    trainloader = DataLoader(chosen_train_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(net.parameters(), lr=lr)
@@ -73,7 +74,7 @@ def train(args, labeled, resume_from, ckpt_file):
         scheduler.step()
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
-    print("Training accuracy: {}".format((train_acc / len(train_dataset) * 100)))
+    print("Training accuracy: {}".format((train_acc / len(chosen_train_dataset) * 100)))
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
     torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file))
 
