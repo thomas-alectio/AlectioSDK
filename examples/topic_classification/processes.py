@@ -29,12 +29,9 @@ def train(args, labeled, resume_from, ckpt_file):
     momentum = 0.9
     epochs = args["train_epochs"]
 
-    if not os.path.isdir('./.data'):
-        os.mkdir('./.data')
-
     global train_dataset, test_dataset
     train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'](
-    root='./.data', ngrams=args["N_GRAMS"], vocab=None)
+    root='./data', ngrams=args["N_GRAMS"], vocab=None)
 
     global VOCAB_SIZE, EMBED_DIM, NUN_CLASS
     VOCAB_SIZE = len(train_dataset.get_vocab())
