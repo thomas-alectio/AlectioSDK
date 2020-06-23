@@ -29,19 +29,17 @@ def train(args, labeled, resume_from, ckpt_file):
     momentum = 0.9
     epochs = args["train_epochs"]
 
-    if not os.path.isdir('./.data'):
-        os.mkdir('./.data')
-
     global train_dataset, test_dataset
     train_dataset, test_dataset = text_classification.DATASETS['AG_NEWS'](
-    root='./.data', ngrams=args["N_GRAMS"], vocab=None)
+    root='./data', ngrams=args["N_GRAMS"], vocab=None)
 
     global VOCAB_SIZE, EMBED_DIM, NUN_CLASS
     VOCAB_SIZE = len(train_dataset.get_vocab())
     EMBED_DIM = args["EMBED_DIM"]
     NUN_CLASS = len(train_dataset.get_labels())
     
-    trainloader = DataLoader(Subset(train_dataset, labeled), batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
+    chosen_train_dataset = Subset(train_dataset, labeled)
+    trainloader = DataLoader(chosen_train_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)    
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(net.parameters(), lr=lr)
@@ -73,7 +71,7 @@ def train(args, labeled, resume_from, ckpt_file):
         scheduler.step()
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
-    print("Training accuracy: {}".format((train_acc / len(train_dataset) * 100)))
+    print("Training accuracy: {}".format((train_acc / len(chosen_train_dataset) * 100)))
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
     torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file))
 
@@ -116,7 +114,7 @@ def infer(args, unlabeled, ckpt_file):
     net.load_state_dict(ckpt["model"])
     net.eval()
 
-    correct, total = 0, 0
+    correct, total, k = 0, 0, 0
     outputs_fin = {}
     with torch.no_grad():
         for i, data in tqdm(enumerate(unlabeled_loader), desc="Inferring"):
@@ -128,9 +126,10 @@ def infer(args, unlabeled, ckpt_file):
             total += cls.size(0)
             correct += (predicted == cls).sum().item()
             for j in range(len(outputs)):
-                outputs_fin[j] = {}
-                outputs_fin[j]["prediction"] = predicted[j].item()
-                outputs_fin[j]["pre_softmax"] = outputs[j].cpu().numpy()
+                outputs_fin[k] = {}
+                outputs_fin[k]["prediction"] = predicted[j].item()
+                outputs_fin[k]["pre_softmax"] = outputs[j].cpu().numpy()
+                k += 1
 
     return {"outputs": outputs_fin}
 
