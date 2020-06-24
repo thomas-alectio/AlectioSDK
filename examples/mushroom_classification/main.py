@@ -12,7 +12,7 @@ with open(args.config, "r") as stream:
 
 # put the train/test/infer processes into the constructor
 app = Pipeline(
-    name=args["mushroom-experiment-1"],
+    name=args["exp_name"],
     train_fn=train,
     test_fn=test,
     infer_fn=infer,

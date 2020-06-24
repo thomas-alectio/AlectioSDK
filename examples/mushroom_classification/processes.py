@@ -17,6 +17,8 @@ import numpy as np
 from torch.utils.data import Dataset, DataLoader
 from mushroom_data import MushroomDataset
 from model import NeuralNet
+import torch.optim as optim
+import os
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -40,18 +42,18 @@ def train(args, labeled, resume_from, ckpt_file):
     train_dataset = train_test[0]
     test_dataset = train_test[1]
 
-    print("Train set length:", len(train))
-    print("Test set length:", len(test))
+    #print("Train set length:", len(train))
+    #print("Test set length:", len(test))
 
-    train_loader = DataLoader(train, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
     
     net = NeuralNet().to(device)
 
     print(net)
 
     criterion = torch.nn.BCELoss()
-    optimizer = optim.SGD(network.parameters(), lr=1e-4, momentum=0.9)
+    optimizer = optim.SGD(net.parameters(), lr=1e-4, momentum=0.9)
 
     if resume_from is not None:
         ckpt = torch.load(os.path.join(args["EXPT_DIR"], resume_from))
@@ -61,21 +63,26 @@ def train(args, labeled, resume_from, ckpt_file):
         getdatasetstate()
 
     net.train()
-    for epoch in tqdm(range(epochs), desc="Training"):
-        running_loss = 0.0
-        train_acc = 0
-        for i, data in enumerate(trainloader):
-            text, offsets, cls = data
-            text, offsets, cls = text.to(device), offsets.to(device), cls.to(device)
-            outputs = net(text, offsets)
-            loss = criterion(outputs, cls)
 
+    for epoch in tqdm(range(20), desc="Training"):
+
+        running_loss = 0
+    
+        for i, batch in enumerate(train_loader, start=0):
+            data, labels = batch
             optimizer.zero_grad()
+            output = net(data)
+            loss = criterion(output, labels)
             loss.backward()
             optimizer.step()
-
-            train_acc += (outputs.argmax(1) == cls).sum().item()
+            
             running_loss += loss.item()
+            
+            if (i%1000):
+                print("epoch: {} batch: {} running-loss: {}".format(epoch + 1, i + 1, running_loss/1000), end="\r")
+                running_loss = 0
+    
+    print("done training")
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
     print("Training accuracy: {}".format((train_acc / len(chosen_train_dataset) * 100)))
