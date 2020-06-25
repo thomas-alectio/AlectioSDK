@@ -25,10 +25,11 @@ To install the AlectioSDK from within the current directory (`./examples/topic_c
 pip install ../../.
 ```
 
-#### 2. Create a log directory
-Create a log directory in the project root to save checkpoints
+#### 2. Download the data and create a log directory
+Create a log directory in the project root to save checkpoints and download the dataset in a separate `data` folder.
 ```
-mkdir log
+mkdir data && mkdir log
+aws s3 sync s3://alectio-datasets/AG_News data
 ```
 ### 3. Build Train, Test and Infer Processes
 The train, test and infer processes are implemented in [`processes.py`](./processes.py).

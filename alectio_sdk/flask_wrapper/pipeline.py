@@ -37,6 +37,7 @@ class Pipeline(object):
         getstate_fn (function): function specifying a mapping between indices and file names.
 
     """
+
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
         sentry_sdk.init(
             dsn="https://4eedcc29fa7844828397dca4afc2db32@o409542.ingest.sentry.io/5282336",
@@ -85,7 +86,6 @@ class Pipeline(object):
         Args:
            args: a dict with the key `sample_payload` (required path) and any arguments needed by the `train`, `test`
            and infer functions.
-
         Example::
 
             args = {sample_payload: 'sample_payload.json', EXPT_DIR : "./log", exp_name: "test", \
@@ -93,13 +93,16 @@ class Pipeline(object):
             app._one_loop(args)
 
         """
-        #payload = json.load(open(args["sample_payload"]))
+        # payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
             os.mkdir(self.logdir)
 
         # read selected indices upto this loop
         payload['cur_loop'] = int(payload['cur_loop'])
+        # self.curout_loop = payload["cur_loop"]
+
+        # Leave cur_loop - 1 when doing a 1 dag solution, when doing 2 dag cur_loop remains the same
         self.cur_loop = payload["cur_loop"]
         self.bucket_name = payload["bucket_name"]
 
@@ -130,8 +133,7 @@ class Pipeline(object):
         json_load_s3 = lambda f: json.load(bucket.Object(key=f).get()["Body"])
         self.meta_data = json_load_s3(key)
 
-
-        #self.meta_data = self.client.read(self.bucket_name, key, "json")
+        # self.meta_data = self.client.read(self.bucket_name, key, "json")
         logging.info('SDK Retrieved file: {} from bucket : {}'.format(key, self.bucket_name))
 
         if self.cur_loop == 0:
@@ -140,6 +142,7 @@ class Pipeline(object):
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
+            # two dag approach needs to refer to the previous checkpoint
             self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
 
         self.ckpt_file = "ckpt_{}".format(self.cur_loop)
@@ -173,12 +176,12 @@ class Pipeline(object):
                 self.bucket_name, object_key=object_key, file_format="pickle"
             )
             self.labeled.extend(selected_indices)
-        self.labeled.sort()   # Maintain increasing order
+        self.labeled.sort()  # Maintain increasing order
         labels = self.train_fn(args,
-            labeled=deepcopy(self.labeled),
-            resume_from=self.resume_from,
-            ckpt_file=self.ckpt_file,
-        )
+                               labeled=deepcopy(self.labeled),
+                               resume_from=self.resume_from,
+                               ckpt_file=self.ckpt_file,
+                               )
 
         end = time.time()
 
@@ -222,7 +225,6 @@ class Pipeline(object):
 
     def compute_metrics(self, predictions, ground_truth):
         if self.type == "Object Detection":
-
             det_boxes, det_labels, det_scores, true_boxes, true_labels = batch_to_numpy(
                 predictions, ground_truth
             )
@@ -291,8 +293,8 @@ class Pipeline(object):
         ts = range(self.meta_data["train_size"])
         self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
         outputs = self.infer_fn(args,
-            unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
-        )["outputs"]
+                                unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
+                                )["outputs"]
 
         # Remap to absolute indices
         remap_outputs = {}
