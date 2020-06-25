@@ -37,6 +37,7 @@ class Pipeline(object):
         getstate_fn (function): function specifying a mapping between indices and file names.
 
     """
+
     def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
         sentry_sdk.init(
             dsn="https://4eedcc29fa7844828397dca4afc2db32@o409542.ingest.sentry.io/5282336",
@@ -90,9 +91,9 @@ class Pipeline(object):
             args = {sample_payload: 'sample_payload.json', EXPT_DIR : "./log", exp_name: "test", \
                                                                  train_epochs: 1, batch_size: 8}
             app._one_loop(args)    
-    
+
         """
-        #payload = json.load(open(args["sample_payload"]))
+        # payload = json.load(open(args["sample_payload"]))
         self.logdir = payload["experiment_id"]
         if not os.path.isdir(self.logdir):
             os.mkdir(self.logdir)
@@ -132,8 +133,7 @@ class Pipeline(object):
         json_load_s3 = lambda f: json.load(bucket.Object(key=f).get()["Body"])
         self.meta_data = json_load_s3(key)
 
-
-        #self.meta_data = self.client.read(self.bucket_name, key, "json")
+        # self.meta_data = self.client.read(self.bucket_name, key, "json")
         logging.info('SDK Retrieved file: {} from bucket : {}'.format(key, self.bucket_name))
 
         if self.cur_loop == 0:
@@ -142,14 +142,15 @@ class Pipeline(object):
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
-            self.resume_from = "ckpt_{}".format(self.cur_loop)
+            # two dag approach needs to refer to the previous checkpoint
+            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
 
         self.ckpt_file = "ckpt_{}".format(self.cur_loop)
 
         self.train(args)
         self.test(args)
         self.infer(args)
-        
+
         # Drop unwanted payload values
         del payload["type"]
         del payload["cur_loop"]
@@ -162,7 +163,7 @@ class Pipeline(object):
 
         Args:
            args: a dict whose keys include all of the arguments needed for your `train` function which is defined in `processes.py`.
-    
+
         """
         start = time.time()
 
@@ -175,12 +176,12 @@ class Pipeline(object):
                 self.bucket_name, object_key=object_key, file_format="pickle"
             )
             self.labeled.extend(selected_indices)
-        self.labeled.sort()   # Maintain increasing order
+        self.labeled.sort()  # Maintain increasing order
         labels = self.train_fn(args,
-            labeled=deepcopy(self.labeled),
-            resume_from=self.resume_from,
-            ckpt_file=self.ckpt_file,
-        )
+                               labeled=deepcopy(self.labeled),
+                               resume_from=self.resume_from,
+                               ckpt_file=self.ckpt_file,
+                               )
 
         end = time.time()
 
@@ -200,7 +201,7 @@ class Pipeline(object):
 
         Args:
            args: a dict whose keys include all of the arguments needed for your `test` function which is defined in `processes.py`.
-    
+
         """
         res = self.test_fn(args, ckpt_file=self.ckpt_file)
 
@@ -224,7 +225,6 @@ class Pipeline(object):
 
     def compute_metrics(self, predictions, ground_truth):
         if self.type == "Object Detection":
-
             det_boxes, det_labels, det_scores, true_boxes, true_labels = batch_to_numpy(
                 predictions, ground_truth
             )
@@ -287,14 +287,14 @@ class Pipeline(object):
         A wrapper for your `infer` function which writes outputs to the specified S3 bucket. Returns `None`.
 
         Args:
-           args: a dict whose keys include all of the arguments needed for your `infer` function which is defined in `processes.py`.  
-    
+           args: a dict whose keys include all of the arguments needed for your `infer` function which is defined in `processes.py`.
+
         """
         ts = range(self.meta_data["train_size"])
         self.unlabeled = sorted(list(set(ts) - set(self.labeled)))
         outputs = self.infer_fn(args,
-            unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
-        )["outputs"]
+                                unlabeled=deepcopy(self.unlabeled), ckpt_file=self.ckpt_file
+                                )["outputs"]
 
         # Remap to absolute indices
         remap_outputs = {}
@@ -317,7 +317,7 @@ class Pipeline(object):
            debug (boolean, Default=False): If set to true, then the app runs in debug mode. See https://flask.palletsprojects.com/en/1.1.x/api/#flask.Flask.debug.
            host (str, Default='0.0.0.0'): the hostname to be listened to.
            port(int, Default:5000): the port of the webserver.
-    
+
         """
         serve(self.app, host="0.0.0.0", port=5000)
 
