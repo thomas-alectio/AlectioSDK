@@ -4,7 +4,7 @@ import torchvision
 import torchvision.transforms as transforms
 import pandas as pd
 import numpy as np
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset
 from mushroom_data import MushroomDataset
 from model import NeuralNet
 import torch.optim as optim
@@ -187,6 +187,8 @@ def infer(args, unlabeled, ckpt_file):
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+
+    train_loader = Subset(train_dataset, unlabeled)
     
     net = NeuralNet()
     net = net.to(device=device)
