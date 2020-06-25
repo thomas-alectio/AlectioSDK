@@ -14,60 +14,25 @@ import argparse
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-print("using device", device)
-
-def getdatasetstate(args, split="train"):
-    global train_dataset, test_dataset
-    
-    CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
-    dataset = MushroomDataset(CSV_FILE)
-
-    train_test = torch.utils.data.random_split(dataset, (int(0.8*len(dataset)), len(dataset)-int(0.8*len(dataset))))
-
-    train_dataset = train_test[0]
-    test_dataset = train_test[1]
-
-    dataset = None
-
-    if split == "train":
-        dataset = train_dataset
-    else:
-        dataset = test_dataset
-    
-    referencedict = {}
-
-    ix = 0
-    for row in dataset[:][0]:
-        referencedict[ix] = row 
-        ix += 1                           
-        
-    return referencedict
-
+def getdatasetstate(config_args={}):  
+    return {k: k for k in range(config_args["train_size"])}
 
 def train(args, labeled, resume_from, ckpt_file):
-    print("running training")
     batch_size = args["batch_size"]
-    lr = 1e-4
-    momentum = 0.9
+    lr = args["learning_rate"]
+    momentum = args["momentum"]
     epochs = args["train_epochs"]
-
-    global train_dataset, test_dataset
     
     CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
     train_test = torch.utils.data.random_split(dataset, (int(0.8*len(dataset)), len(dataset)-int(0.8*len(dataset))))
 
-    train_dataset = train_test[0]
-    test_dataset = train_test[1]
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_test[0], batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(train_test[1], batch_size=batch_size, shuffle=True)
     
     net = NeuralNet()
     net = net.to(device=device)
-
-    print(net)
 
     criterion = torch.nn.BCELoss()
     optimizer = optim.SGD(net.parameters(), lr=1e-4, momentum=0.9)
@@ -102,52 +67,38 @@ def train(args, labeled, resume_from, ckpt_file):
             if (i%1000):
                 print("epoch: {} batch: {} running-loss: {}".format(epoch + 1, i + 1, running_loss/1000), end="\r")
                 running_loss = 0
-    
-    print("done training")
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
-
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
-    #print("ckpt file", ckpt)
     torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file + ".pth"))
-
     return
 
 
 def test(args, ckpt_file):
-    print("running testing")
     batch_size = args["batch_size"]
-    lr = 1e-4
-    momentum = 0.9
+    lr = args["learning_rate"]
+    momentum = args["momentum"]
     epochs = args["train_epochs"]
-
-    global train_dataset, test_dataset
     
     CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
     train_test = torch.utils.data.random_split(dataset, (int(0.8*len(dataset)), len(dataset)-int(0.8*len(dataset))))
 
-    train_dataset = train_test[0]
-    test_dataset = train_test[1]
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_test[0], batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(train_test[1], batch_size=batch_size, shuffle=True)
     
     net = NeuralNet()
     net = net.to(device=device)
 
-    print(net)
-    print("loading ckpt into model")
-    #print(torch.load(os.path.join(args["EXPT_DIR"] + "/"+ ckpt_file + ".pth"))["model"])
-    net.load_state_dict(torch.load(os.path.join(args["EXPT_DIR"] + "/"+ ckpt_file + ".pth"))["model"])
+    net.load_state_dict(torch.load(os.path.join(args["EXPT_DIR"], ckpt_file + ".pth"))["model"])
 
     net.eval()
     predix = 0
     predictions = {}
     truelabels = {}
     
-    n_val = len(test_dataset)
+    n_val = len(train_test[0])
     with tqdm(total=n_val, desc='Testing round', unit='batch', leave=False) as pbar:
         for step, (batch_x, batch_y) in enumerate(test_loader):
             with torch.no_grad():
@@ -162,17 +113,14 @@ def test(args, ckpt_file):
                 predix+=1
             
             pbar.update()
-    
-    print("finished testing")
-        
+            
     return {"predictions": predictions, "labels": truelabels}
 
 
 def infer(args, unlabeled, ckpt_file):
-    print("running inference")
     batch_size = args["batch_size"]
-    lr = 1e-4
-    momentum = 0.9
+    lr = args["learning_rate"]
+    momentum = args["momentum"]
     epochs = args["train_epochs"]
 
     global train_dataset, test_dataset
@@ -182,11 +130,8 @@ def infer(args, unlabeled, ckpt_file):
 
     train_test = torch.utils.data.random_split(dataset, (int(0.8*len(dataset)), len(dataset)-int(0.8*len(dataset))))
 
-    train_dataset = train_test[0]
-    test_dataset = train_test[1]
-
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_test[0], batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(train_test[1], batch_size=batch_size, shuffle=True)
 
     train_loader = Subset(train_dataset, unlabeled)
     
@@ -194,9 +139,7 @@ def infer(args, unlabeled, ckpt_file):
     net = net.to(device=device)
 
     print(net)
-    print("loading last best model")
-    #print(torch.load(os.path.join(args["EXPT_DIR"] + "/"+ ckpt_file + ".pth"))["model"])
-    net.load_state_dict(torch.load(os.path.join(args["EXPT_DIR"] + "/"+ ckpt_file + ".pth"))["model"])
+    net.load_state_dict(torch.load(os.path.join(args["EXPT_DIR"], ckpt_file + ".pth"))["model"])
 
     net.eval()
     
@@ -237,9 +180,11 @@ if __name__ == "__main__":
     ckpt_file = "ckpt_0"
 
 
-    print("testing get state")
-    getdatasetstate(args=args)
-    print("Running training")
+    print("Testing getdatastate")
+    getdatasetstate(config_args=args)
+    print("Running train")
     train(args=args, labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
+    print("Running test")
     test(args=args, ckpt_file=ckpt_file)
+    print("Running infer")
     infer(args=args, unlabeled=[10, 20, 30], ckpt_file=ckpt_file)

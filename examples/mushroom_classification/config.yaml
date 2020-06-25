@@ -7,3 +7,6 @@ exp_name: "mushroom-experiment-1"
 ### TRAIN FUNCTION ARGS ###
 train_epochs: 2
 batch_size: 64
+train_size: 6499
+learning_rate: 1e-4
+momentum: 0.9
