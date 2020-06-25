@@ -7,4 +7,4 @@ More examples will be added as we further develop the SDK.
 2. [Object detection](./object_detection)
 3. [Image classification](./image_classification)
 
-Note: All other examples are examples that are in production. Only the above use cases are supported in production at this moment.
+Note: Only the examples above are examples that are in production. Other examples seen in this repository are not in production at this moment.
