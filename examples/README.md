@@ -11,7 +11,7 @@ Currently we recommend you to try the three examples below
 
 
 ## TO DO
-- [x] Completed and tested implementations of additional examples under:
+Completed and tested implementations of additional examples under:
   - [x] NLP_classification/
   - [x] image_classification/Deepweeds/
   - [x] image_classification/mnist/
