@@ -1,4 +1,4 @@
-# Image Classification on CIFAR-10
+# Image Classification on MNIST
 
 This example shows you how to build `train`, `test` and `infer` processes
 for image classification problems. In particular, it will show you the format
@@ -81,10 +81,5 @@ images. The value of `outputs[i]` is a dictionary that records the output of
 the model on training image `i`. 
 
 ## TODO
-- [x] Implementation of additional metrics including:
-  - [x] queried per class
-  - [x] confusion matrix
-  - [x] label disagreement
-  - [x] accuracy per class
-
-- [ ] Output should include score distribution and logits 
+  - [ ] End to end testing
+ 
