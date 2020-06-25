@@ -102,7 +102,7 @@ class Pipeline(object):
         # self.curout_loop = payload["cur_loop"]
 
         # Leave cur_loop - 1 when doing a 1 dag solution, when doing 2 dag cur_loop remains the same
-        self.cur_loop = payload["cur_loop"] - 1
+        self.cur_loop = payload["cur_loop"]
         self.bucket_name = payload["bucket_name"]
 
         # type of the ML problem
@@ -142,7 +142,7 @@ class Pipeline(object):
             object_key = os.path.join(self.expt_dir, "data_map.pkl")
             self.client.multi_part_upload_with_s3(self.state_json, self.bucket_name, object_key, "pickle")
         else:
-            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
+            self.resume_from = "ckpt_{}".format(self.cur_loop)
 
         self.ckpt_file = "ckpt_{}".format(self.cur_loop)
 

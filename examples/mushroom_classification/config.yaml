@@ -5,5 +5,5 @@ WEIGHTS_DIR : "./weights"
 exp_name: "mushroom-experiment-1"
 
 ### TRAIN FUNCTION ARGS ###
-train_epochs: 10
+train_epochs: 2
 batch_size: 64
