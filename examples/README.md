@@ -12,10 +12,10 @@ Currently we recommend you to try the three examples below
 
 ## TO DO
 Completed and tested implementations of additional examples under:
-  - [x] NLP_classification/
-  - [x] image_classification/Deepweeds/
-  - [x] image_classification/mnist/
-  - [x] mushroom_classification/
-  - [x] object_segmentation/Carvana/
-  - [x] regression/house-price-prediction/
+  - [ ] NLP_classification/
+  - [ ] image_classification/Deepweeds/
+  - [ ] image_classification/mnist/
+  - [ ] mushroom_classification/
+  - [ ] object_segmentation/Carvana/
+  - [ ] regression/house-price-prediction/
 
