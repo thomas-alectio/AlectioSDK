@@ -80,4 +80,5 @@ The return of the infer process is a dictionary
 images. The value of `outputs[i]` is a dictionary that records the output of
 the model on training image `i`. 
 
-
+### Citation
+We dont own rights to the dataset/model. Please refer https://github.com/AlexOlsen/DeepWeeds for a detailed implementation 
