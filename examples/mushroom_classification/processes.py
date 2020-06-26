@@ -18,6 +18,7 @@ def getdatasetstate(config_args={}):
     return {k: k for k in range(config_args["train_size"])}
 
 def train(args, labeled, resume_from, ckpt_file):
+    print("========== In the train step ==========")
     batch_size = args["batch_size"]
     lr = args["learning_rate"]
     momentum = args["momentum"]
@@ -75,6 +76,7 @@ def train(args, labeled, resume_from, ckpt_file):
 
 
 def test(args, ckpt_file):
+    print("========== In the test step ==========")
     batch_size = args["batch_size"]
     lr = args["learning_rate"]
     momentum = args["momentum"]
@@ -113,17 +115,33 @@ def test(args, ckpt_file):
                 predix+=1
             
             pbar.update()
+
+    #both ground_truth and predictions are dictionaries which we need to unpack
+    #the underlying SDK needs to be changed to accept output from binary classifiers, but this is a "fix" for now
+    truelabels_ = []
+    predictions_ = []
+    
+    for key in predictions:
+        if (predictions[key][0] > 0.5):
+            predictions_.append(1)
+        else:
+            predictions_.append(0)
+    
+    for key in truelabels:
+        truelabels_.append(truelabels[key][0])
+    
+    truelabels = truelabels_
+    predictions = predictions_
             
     return {"predictions": predictions, "labels": truelabels}
 
 
 def infer(args, unlabeled, ckpt_file):
+    print("========== In the inference step ==========")
     batch_size = args["batch_size"]
     lr = args["learning_rate"]
     momentum = args["momentum"]
     epochs = args["train_epochs"]
-
-    global train_dataset, test_dataset
     
     CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
@@ -133,7 +151,7 @@ def infer(args, unlabeled, ckpt_file):
     train_loader = DataLoader(train_test[0], batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(train_test[1], batch_size=batch_size, shuffle=True)
 
-    train_loader = Subset(train_dataset, unlabeled)
+    train_loader = Subset(train_test[0], unlabeled)
     
     net = NeuralNet()
     net = net.to(device=device)
@@ -143,7 +161,7 @@ def infer(args, unlabeled, ckpt_file):
 
     net.eval()
     
-    n_val = len(train_dataset)
+    n_val = len(unlabeled)
     predictions = {}
     predix = 0
     with tqdm(total=n_val, desc='Inference round', unit='batch', leave=False) as pbar:

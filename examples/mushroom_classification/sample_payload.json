@@ -3,6 +3,6 @@
     "experiment_id": "9ab4d71eb66311ea853e16ea6f1f58ca",
     "cur_loop": 0,
     "user_id": "b69fda54b19611eaae369ef3981e2e06",
-    "type": "classification",
+    "type": "Classification",
     "bucket_name": "alectio-demo"
 }

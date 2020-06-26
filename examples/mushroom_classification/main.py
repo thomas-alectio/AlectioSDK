@@ -21,6 +21,6 @@ app = Pipeline(
 )
 
 if __name__ == "__main__":
-    #payload = json.load(open(args["sample_payload"], "r"))
-    #app._one_loop(args=args, payload=payload)
+    # payload = json.load(open(args["sample_payload"], "r"))
+    # app._one_loop(args=args, payload=payload)
     app(debug=True)
