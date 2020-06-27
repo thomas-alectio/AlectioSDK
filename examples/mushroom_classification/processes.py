@@ -33,7 +33,7 @@ def train(args, labeled, resume_from, ckpt_file):
 
     print("The length of the train subset is", len(train_subset))
 
-    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
     
     net = NeuralNet()
     net = net.to(device=device)
@@ -90,7 +90,7 @@ def test(args, ckpt_file):
 
     test_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)), len(dataset))))
 
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
     net = NeuralNet()
     net = net.to(device=device)
@@ -154,7 +154,7 @@ def infer(args, unlabeled, ckpt_file):
 
     print("the length of the dataset to run inference on is", len(train_subset))
 
-    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
+    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
     
     net = NeuralNet()
     net = net.to(device=device)
