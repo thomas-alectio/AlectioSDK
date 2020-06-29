@@ -12,8 +12,6 @@ import os
 import yaml
 import argparse
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-
 def getdatasetstate(args={}):  
     return {k: k for k in range(args["train_size"])}
 
@@ -200,7 +198,6 @@ if __name__ == "__main__":
     labeled = list(range(1000))
     resume_from = None
     ckpt_file = "ckpt_0"
-
 
     print("Testing getdatasetstate")
     getdatasetstate(args=args)
