@@ -189,13 +189,13 @@ def infer(args,unlabeled, ckpt_file):
 
 def getdatasetstate(args, split="train"):
     # Load the last best model
-    trainDF = pd.read_csv(os.path.join(args["DATA_DIR"],'train.csv'))
-    testDF = pd.read_csv(os.path.join(args["DATA_DIR"],'test.csv'))
-
-    X , y, X_test = preprocess(trainDF,testDF)                                 ##### Note X_test here doesnot contain target hence using part of train as test
-    X = np.array(X)
-    y = np.array(y)
-    X_test = np.array(X_test)
+        trainDF = pd.read_csv(os.path.join(args["DATA_DIR"],'train.csv'))
+        testDF = pd.read_csv(os.path.join(args["DATA_DIR"],'test.csv'))
+    
+        X , y, X_test = preprocess(trainDF,testDF)                                 ##### Note X_test here doesnot contain target hence using part of train as test
+        X = np.array(X)
+        y = np.array(y)
+        X_test = np.array(X_test)
     if split == "train":
         splitix = int(args["VAL_PERCENT"] *len(X))
         X_train = X[:splitix,:]
