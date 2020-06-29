@@ -24,7 +24,7 @@ def train(args, labeled, resume_from, ckpt_file):
     momentum = args["momentum"]
     epochs = args["train_epochs"]
     
-    CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
+    CSV_FILE = "./data/mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
     train_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)))))
@@ -85,7 +85,7 @@ def test(args, ckpt_file):
     momentum = args["momentum"]
     epochs = args["train_epochs"]
     
-    CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
+    CSV_FILE = "./data/mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
     test_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)), len(dataset))))
@@ -145,7 +145,7 @@ def infer(args, unlabeled, ckpt_file):
     momentum = args["momentum"]
     epochs = args["train_epochs"]
     
-    CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
+    CSV_FILE = "./data/mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
     train_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)))))
