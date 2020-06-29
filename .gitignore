@@ -156,7 +156,6 @@ cython_debug/
 data
 log
 vector
-FaceBoxes.PyTorch/
 
 # VSCode
 
