@@ -12,6 +12,8 @@ import os
 import yaml
 import argparse
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 def getdatasetstate(args={}):  
     return {k: k for k in range(args["train_size"])}
 
@@ -117,8 +119,7 @@ def test(args, ckpt_file):
                 predix+=1
             
             pbar.update()
-    #both ground_truth and predictions are dictionaries which we need to unpack
-    #the underlying SDK needs to be changed to accept output from binary classifiers, but this is a "fix" for now
+   
     truelabels_ = []
     predictions_ = []
     
