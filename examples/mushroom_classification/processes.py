@@ -14,8 +14,8 @@ import argparse
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-def getdatasetstate(config_args={}):  
-    return {k: k for k in range(config_args["train_size"])}
+def getdatasetstate(args={}):  
+    return {k: k for k in range(args["train_size"])}
 
 def train(args, labeled, resume_from, ckpt_file):
     print("========== In the train step ==========")
@@ -23,15 +23,14 @@ def train(args, labeled, resume_from, ckpt_file):
     lr = args["learning_rate"]
     momentum = args["momentum"]
     epochs = args["train_epochs"]
+    train_split = args["split_train"]
     
     CSV_FILE = "./data/mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
-    train_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)))))
+    train_dataset = torch.utils.data.Subset(dataset, list(range(int(train_split * len(dataset)))))
 
     train_subset = Subset(train_dataset, labeled)
-
-    print("The length of the train subset is", len(train_subset))
 
     train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
     
@@ -39,7 +38,7 @@ def train(args, labeled, resume_from, ckpt_file):
     net = net.to(device=device)
 
     criterion = torch.nn.BCELoss()
-    optimizer = optim.SGD(net.parameters(), lr=1e-4, momentum=0.9)
+    optimizer = optim.SGD(net.parameters(), lr=float(lr), momentum=momentum)
 
     if resume_from is not None:
         ckpt = torch.load(os.path.join(args["EXPT_DIR"], resume_from))
@@ -71,10 +70,12 @@ def train(args, labeled, resume_from, ckpt_file):
             if (i%1000):
                 print("epoch: {} batch: {} running-loss: {}".format(epoch + 1, i + 1, running_loss/1000), end="\r")
                 running_loss = 0
-
+    
     print("Finished Training. Saving the model as {}".format(ckpt_file))
+
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
     torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file + ".pth"))
+
     return
 
 
@@ -84,13 +85,14 @@ def test(args, ckpt_file):
     lr = args["learning_rate"]
     momentum = args["momentum"]
     epochs = args["train_epochs"]
-    
+    train_split = args["split_train"]
+
     CSV_FILE = "./data/mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
-    test_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)), len(dataset))))
+    test_dataset = torch.utils.data.Subset(dataset, list(range(int(train_split * len(dataset)), len(dataset))))
 
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     net = NeuralNet()
     net = net.to(device=device)
@@ -117,7 +119,6 @@ def test(args, ckpt_file):
                 predix+=1
             
             pbar.update()
-
     #both ground_truth and predictions are dictionaries which we need to unpack
     #the underlying SDK needs to be changed to accept output from binary classifiers, but this is a "fix" for now
     truelabels_ = []
@@ -135,6 +136,7 @@ def test(args, ckpt_file):
     truelabels = truelabels_
     predictions = predictions_
             
+
     return {"predictions": predictions, "labels": truelabels}
 
 
@@ -144,22 +146,20 @@ def infer(args, unlabeled, ckpt_file):
     lr = args["learning_rate"]
     momentum = args["momentum"]
     epochs = args["train_epochs"]
+    train_split = args["split_train"]
     
     CSV_FILE = "./data/mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
-    train_dataset = torch.utils.data.Subset(dataset, list(range(int(0.8 * len(dataset)))))
+    train_dataset = torch.utils.data.Subset(dataset, list(range(int(train_split * len(dataset)))))
 
     train_subset = Subset(train_dataset, unlabeled)
 
-    print("the length of the dataset to run inference on is", len(train_subset))
-
-    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
     
     net = NeuralNet()
     net = net.to(device=device)
 
-    print(net)
     net.load_state_dict(torch.load(os.path.join(args["EXPT_DIR"], ckpt_file + ".pth"))["model"])
 
     net.eval()
@@ -167,6 +167,7 @@ def infer(args, unlabeled, ckpt_file):
     n_val = len(unlabeled)
     predictions = {}
     predix = 0
+
     with tqdm(total=n_val, desc='Inference round', unit='batch', leave=False) as pbar:
         for step, (batch_x, batch_y) in enumerate(train_loader):
             with torch.no_grad():
@@ -175,7 +176,7 @@ def infer(args, unlabeled, ckpt_file):
                 prediction = net(batch_x)
                 
             for logit in prediction:
-                predictions[predix] = logit.cpu().numpy().tolist()
+                predictions[ unlabeled[predix] ] = logit.cpu().numpy().tolist()
                 predix+=1
             
             pbar.update()
@@ -201,11 +202,8 @@ if __name__ == "__main__":
     ckpt_file = "ckpt_0"
 
 
-    print("Testing getdatastate")
-    getdatasetstate(config_args=args)
-    print("Running train")
+    print("Testing getdatasetstate")
+    getdatasetstate(args=args)
     train(args=args, labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
-    print("Running test")
     test(args=args, ckpt_file=ckpt_file)
-    print("Running infer")
     infer(args=args, unlabeled=[10, 20, 30], ckpt_file=ckpt_file)

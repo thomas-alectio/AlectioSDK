@@ -10,3 +10,4 @@ batch_size: 64
 train_size: 6499
 learning_rate: 1e-4
 momentum: 0.9
+split_train: 0.80
