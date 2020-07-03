@@ -5,7 +5,6 @@ import torchvision.transforms as transforms
 import pandas as pd
 import numpy as np
 from torch.utils.data import Dataset, DataLoader, Subset
-from mushroom_data import MushroomDataset
 from model import NeuralNet
 import torch.optim as optim
 import os
@@ -17,6 +16,32 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 def getdatasetstate(args={}):  
     return {k: k for k in range(args["train_size"])}
 
+def processData(args, stageFor="train", indices=None):
+    
+    #images from pytorch are grey-scale 0-1 in pixel values, scale each image by subtracting a mean of 0.5, 
+    #and dividing by a std of 0.5 to bring the range of values between [-1, 1]
+    transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
+    #download the data if it doesn't exisit already
+    trainset = torchvision.datasets.FashionMNIST(root=args["DATA_DIR"], train=True, transform=transform, download=True)
+    testset = torchvision.datasets.FashionMNIST(root=args["DATA_DIR"], train=False, transform=transform, download=True)
+
+    #60k train, 10k test
+    data_subset = None
+    loader = None
+
+    if (stageFor == "train"):
+        data_subset = Subset(trainset, indices)
+        loader = DataLoader(data_subset, batch_size=args["batch_size"], shuffle=True)
+    elif (stageFor == "test"):
+        loader = DataLoader(testset, batch_size=args["batch_size"], shuffle=False)
+    elif (stageFor == "infer"):
+        data_subset = Subset(trainset, indices)
+        loader = DataLoader(data_subset, batch_size=args["batch_size"], shuffle=True)
+    
+    return loader 
+
+
+
 def train(args, labeled, resume_from, ckpt_file):
     print("========== In the train step ==========")
     batch_size = args["batch_size"]
@@ -25,19 +50,12 @@ def train(args, labeled, resume_from, ckpt_file):
     epochs = args["train_epochs"]
     train_split = args["split_train"]
     
-    CSV_FILE = "./data/mushrooms.csv"
-    dataset = MushroomDataset(CSV_FILE)
-
-    train_dataset = torch.utils.data.Subset(dataset, list(range(int(train_split * len(dataset)))))
-
-    train_subset = Subset(train_dataset, labeled)
-
-    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
+    loader = processData(args, stageFor="train", indices=labeled)
     
     net = NeuralNet()
     net = net.to(device=device)
 
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=float(lr), momentum=momentum)
 
     if resume_from is not None:
@@ -53,7 +71,7 @@ def train(args, labeled, resume_from, ckpt_file):
 
         running_loss = 0
     
-        for i, batch in enumerate(train_loader, start=0):
+        for i, batch in enumerate(loader, start=0):
             data, labels = batch
             
             data = data.to(device)
@@ -87,13 +105,8 @@ def test(args, ckpt_file):
     epochs = args["train_epochs"]
     train_split = args["split_train"]
 
-    CSV_FILE = "./data/mushrooms.csv"
-    dataset = MushroomDataset(CSV_FILE)
-
-    test_dataset = torch.utils.data.Subset(dataset, list(range(int(train_split * len(dataset)), len(dataset))))
-
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
+    loader = processData(args, stageFor="test")
+    
     net = NeuralNet()
     net = net.to(device=device)
 
@@ -104,9 +117,9 @@ def test(args, ckpt_file):
     predictions = {}
     truelabels = {}
     
-    n_val = len(test_dataset)
+    n_val = args["test_size"]
     with tqdm(total=n_val, desc='Testing round', unit='batch', leave=False) as pbar:
-        for step, (batch_x, batch_y) in enumerate(test_loader):
+        for step, (batch_x, batch_y) in enumerate(loader):
             with torch.no_grad():
                 batch_x = batch_x.to(device)
                 batch_y = batch_y.to(device)
@@ -114,29 +127,21 @@ def test(args, ckpt_file):
                 prediction = net(batch_x)
                 
             for logit,label  in zip(prediction,batch_y):
-                predictions[predix] = logit.cpu().numpy().tolist()
+                #predictions[predix] = logit.cpu().numpy().tolist()
                 truelabels[predix] = label.cpu().numpy().tolist()
+
+                class_probabilities = logit.cpu().numpy().tolist()
+                index_max = np.argmax(class_probabilities)
+                predictions[predix] = index_max
+
                 predix+=1
             
-            pbar.update()
-   
-    truelabels_ = []
-    predictions_ = []
-    
-    for key in predictions:
-        if (predictions[key][0] > 0.5):
-            predictions_.append(1)
-        else:
-            predictions_.append(0)
-    
-    for key in truelabels:
-        truelabels_.append(truelabels[key][0])
-    
-    truelabels = truelabels_
-    predictions = predictions_
+            pbar.update()         
 
-    #print("predictions",predictions)
-            
+    #unpack predictions
+    predictions = [val for key, val in predictions.items()]
+    truelabels = [val for key, val in truelabels.items()]
+    
     return {"predictions": predictions, "labels": truelabels}
 
 
@@ -148,14 +153,7 @@ def infer(args, unlabeled, ckpt_file):
     epochs = args["train_epochs"]
     train_split = args["split_train"]
     
-    CSV_FILE = "./data/mushrooms.csv"
-    dataset = MushroomDataset(CSV_FILE)
-
-    train_dataset = torch.utils.data.Subset(dataset, list(range(int(train_split * len(dataset)))))
-
-    train_subset = Subset(train_dataset, unlabeled)
-
-    train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=False)
+    loader = processData(args, stageFor="infer", indices=unlabeled)
     
     net = NeuralNet()
     net = net.to(device=device)
@@ -169,7 +167,7 @@ def infer(args, unlabeled, ckpt_file):
     predix = 0
 
     with tqdm(total=n_val, desc='Inference round', unit='batch', leave=False) as pbar:
-        for step, (batch_x, batch_y) in enumerate(train_loader):
+        for step, (batch_x, batch_y) in enumerate(loader):
             with torch.no_grad():
                 batch_x = batch_x.to(device)
                 batch_y = batch_y.to(device)
@@ -177,18 +175,15 @@ def infer(args, unlabeled, ckpt_file):
                 
             for logit in prediction:
                 predictions[unlabeled[predix]] = {}
-                prediction = 0
-                if logit.cpu().numpy() > 0.5:
-                    prediction = 1
-                predictions[unlabeled[predix]]["prediction"] = prediction
-                predictions[unlabeled[predix]]["pre_softmax"] = [logit.cpu().numpy()[0], 1-logit.cpu().numpy()[0]]
-
+                
+                class_probabilities = logit.cpu().numpy().tolist()
+                predictions[unlabeled[predix]]["pre_softmax"] = class_probabilities
+                index_max = np.argmax(class_probabilities)
+                predictions[unlabeled[predix]]["prediction"] = index_max
                 predix+=1
             
             pbar.update()
-    
-    #print("predictions",predictions)
-
+        
     return {"outputs": predictions}
 
 if __name__ == "__main__":
@@ -205,7 +200,7 @@ if __name__ == "__main__":
     with open(args.config, "r") as stream:
         args = yaml.safe_load(stream)
 
-    labeled = list(range(1000))
+    labeled = list(range(5000))
     resume_from = None
     ckpt_file = "ckpt_0"
 
@@ -213,4 +208,4 @@ if __name__ == "__main__":
     getdatasetstate(args=args)
     train(args=args, labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
     test(args=args, ckpt_file=ckpt_file)
-    print(infer(args=args, unlabeled=[10, 20, 30], ckpt_file=ckpt_file))
+    infer(args=args, unlabeled=[10, 20, 30], ckpt_file=ckpt_file)

@@ -1,14 +1,13 @@
-## Mushroom Classification Running Instructions
+## Fashion MNIST Classification Task
 
-> A task where you'll predict the toxicity (posionous or edible) of mushrooms in the wild using 23 numerical features describing quantitative and qualitative aspects of the mushrooms.
+> A task where we'll detect the fashion style of an image.
 
 ### Running steps
 
-Make sure you are on the `develop` branch, with `mushroom_classification` as your working directory. 
+Make sure you are on the `develop` branch, with `fashion-mnist` as your working directory. 
 
 Configure demo state
 1. Create a data directory `mkdir data` and a log directory `mkdir log`
-2. Download the .csv data from kaggle from this [link](https://www.kaggle.com/uciml/mushroom-classification). Place the csv data in the `./data` folder you created in step #1. Rename the CSV to `mushrooms.csv`
 3. Modify hyper-parameters in the `config.yaml` file as needed (to set the train_epochs, batch_size, learning rate, momentum, etc)
 
 Set up environment
