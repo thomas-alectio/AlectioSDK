@@ -12,7 +12,7 @@ No, I've only changed my topic classification example so haven't modified `alect
 --------------------------------------------------------------------------------------------------------
 **Example name**:  Topic classification
 
-- [x] I have tried an end-to-end test and it was successful
+- [x] I have tried an end-to-end test (involving the front-end, backend, and AL engine) and it was successful
 - [x] Loss, metrics, etc. look reasonable/consistent to me
 - [x] If necessary, I updated related files such as `requirements.txt` and `README.md` 
 
