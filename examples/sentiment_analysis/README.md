@@ -1,4 +1,4 @@
-Sentiment Classification on the Yelp Review Polarity Dataset using TensorFlow v2
+# Sentiment Classification on the Yelp Review Polarity Dataset using TensorFlow v2
 
 This example is intended to show you how to build the `train`, `test` and `infer` processes for the `AlectioSDK` for text sentiment
 classification problems. We will use the [Yelp Review Polarity](https://www.kaggle.com/irustandi/yelp-review-polarity/version/1) dataset. Each sample in this dataset is a news article. The objective is to classify the each Yelp review as either positive or negative as seen below:
