@@ -22,8 +22,20 @@ def processData(args, stageFor="train", indices=None):
     #and dividing by a std of 0.5 to bring the range of values between [-1, 1]
     transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.5,), (0.5,))])
     #download the data if it doesn't exisit already
-    trainset = torchvision.datasets.FashionMNIST(root=args["DATA_DIR"], train=True, transform=transform, download=True)
-    testset = torchvision.datasets.FashionMNIST(root=args["DATA_DIR"], train=False, transform=transform, download=True)
+    
+    if (args["DATASET"] == "Fashion"):
+        print("Downloading Fashion-MNIST Data")
+        trainset = torchvision.datasets.FashionMNIST(root="./data", train=True, 
+                                            transform=transform, download=True)
+        testset = torchvision.datasets.FashionMNIST(root="./data", train=False, 
+                                            transform=transform, download=True)
+    else:
+        print("Downloading MNIST Data")
+
+        trainset = torchvision.datasets.MNIST(root="./data", train=True, 
+                                        transform=transform, download=True)
+        testset = torchvision.datasets.MNIST(root="./data", train=False, 
+                                        transform=transform, download=True)
 
     #60k train, 10k test
     data_subset = None
