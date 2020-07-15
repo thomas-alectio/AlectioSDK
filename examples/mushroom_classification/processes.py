@@ -22,6 +22,7 @@ import os
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
+
 def getdatasetstate(args={}):
     return {k: k for k in range(120000)}
 
@@ -33,21 +34,23 @@ def train(args, labeled, resume_from, ckpt_file):
     epochs = args["train_epochs"]
 
     global train_dataset, test_dataset
-    
+
     CSV_FILE = "./data/datasets_478_974_mushrooms.csv"
     dataset = MushroomDataset(CSV_FILE)
 
-    train_test = torch.utils.data.random_split(dataset, (int(0.8*len(dataset)), len(dataset)-int(0.8*len(dataset))))
+    train_test = torch.utils.data.random_split(
+        dataset, (int(0.8 * len(dataset)), len(dataset) - int(0.8 * len(dataset)))
+    )
 
     train_dataset = train_test[0]
     test_dataset = train_test[1]
 
-    #print("Train set length:", len(train))
-    #print("Test set length:", len(test))
+    # print("Train set length:", len(train))
+    # print("Test set length:", len(test))
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
-    
+
     net = NeuralNet().to(device)
 
     print(net)
@@ -67,7 +70,7 @@ def train(args, labeled, resume_from, ckpt_file):
     for epoch in tqdm(range(20), desc="Training"):
 
         running_loss = 0
-    
+
         for i, batch in enumerate(train_loader, start=0):
             data, labels = batch
             optimizer.zero_grad()
@@ -75,13 +78,18 @@ def train(args, labeled, resume_from, ckpt_file):
             loss = criterion(output, labels)
             loss.backward()
             optimizer.step()
-            
+
             running_loss += loss.item()
-            
-            if (i%1000):
-                print("epoch: {} batch: {} running-loss: {}".format(epoch + 1, i + 1, running_loss/1000), end="\r")
+
+            if i % 1000:
+                print(
+                    "epoch: {} batch: {} running-loss: {}".format(
+                        epoch + 1, i + 1, running_loss / 1000
+                    ),
+                    end="\r",
+                )
                 running_loss = 0
-    
+
     print("done training")
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
@@ -94,7 +102,9 @@ def train(args, labeled, resume_from, ckpt_file):
 
 def test(args, ckpt_file):
     batch_size = args["batch_size"]
-    testloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch) 
+    testloader = DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch
+    )
 
     predictions, targets = [], []
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
@@ -121,7 +131,12 @@ def test(args, ckpt_file):
 def infer(args, unlabeled, ckpt_file):
     unlabeled = Subset(train_dataset, unlabeled)
     unlabeled_loader = torch.utils.data.DataLoader(
-        unlabeled, batch_size=args["batch_size"], shuffle=False, num_workers=2, collate_fn=generate_batch)
+        unlabeled,
+        batch_size=args["batch_size"],
+        shuffle=False,
+        num_workers=2,
+        collate_fn=generate_batch,
+    )
 
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     ckpt = torch.load(os.path.join(args["EXPT_DIR"], ckpt_file))
@@ -146,6 +161,7 @@ def infer(args, unlabeled, ckpt_file):
                 k += 1
 
     return {"outputs": outputs_fin}
+
 
 if __name__ == "__main__":
     labeled = list(range(1000))

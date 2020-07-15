@@ -1,4 +1,4 @@
-# Image Classification on CIFAR-10
+# Regression on House price prediction dataset
 
 This example shows you how to build `train`, `test` and `infer` processes
 for image classification problems. In particular, it will show you the format
@@ -79,12 +79,10 @@ The return of the infer process is a dictionary
 `outputs` is a dictionary whose keys are the indices of the unlabeled
 images. The value of `outputs[i]` is a dictionary that records the output of
 the model on training image `i`. 
-
-## TODO
-- [x] Implementation of additional metrics including:
-  - [x] queried per class
-  - [x] confusion matrix
-  - [x] label disagreement
-  - [x] accuracy per class
-
-- [ ] Output should include score distribution and logits 
+### Citation
+Refer to https://www.kaggle.com/c/house-prices-advanced-regression-techniques for more info on the dataset used
+### TODO
+  - [ ] Metrics for regression
+  - [ ] Active learning modules
+  - [ ] End to end testing
+  

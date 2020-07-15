@@ -12,10 +12,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Operating System :: Linux",
-    ],
+    classifiers=["Programming Language :: Python :: 3", "Operating System :: Linux",],
     python_requires=">=3.6",
     package_data={"": ["config.json"]},
     include_package_data=True,

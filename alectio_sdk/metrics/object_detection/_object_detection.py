@@ -127,9 +127,9 @@ class Metrics(object):
         
         """
         for label in range(self.num_classes):
-            tpBoolmap = detScores = []
+            tpBoolmap, detScores = [], []
             nothingness = False
-            tp = fp = num_annotations = 0
+            tp, fp, num_annotations = 0, 0, 0
             for i in range(len(self.reordered_trueboxes)):
                 currGT = self.reordered_trueboxes[i][label]
                 currDet = self.reordered_detboxes[i][label]

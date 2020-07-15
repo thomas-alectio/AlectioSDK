@@ -195,5 +195,5 @@ Refer to `processes.py` to get more information about the format of this functio
 Finally, to run the flask app, execute:
 
 ```
-python main.py --config config.yaml
+gunicorn --bind 0.0.0.0:5000 --timeout 2500000 main:app
 ```

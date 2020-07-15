@@ -1,0 +1,18 @@
+Project name: 'COCO'
+AL type: 'regular_al'                              ########## Available options - [regular_al, manual_al, auto_al, stress_testing]
+num_loops: 10
+num_recs: 100
+strategy: 'confidence'                             ########## Applicable for only regular_al and manual_al - Use any of 'confidence' or 'margin' or 'entropy' 
+
+
+EXPT_DIR : "./log"
+DATA_DIR : "./data"
+IMAGEDATA_DIR : "./data/images/"
+TRAINIMAGEDATA_DIR : "./data/images/train"
+TESTIMAGEDATA_DIR : "./data/images/test"
+WEIGHTS_DIR : "./weights"
+exp_name: "test"
+
+### TRAIN FUNCTION ARGS ###
+train_epochs: 5
+batch_size: 8

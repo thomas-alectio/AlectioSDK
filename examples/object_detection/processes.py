@@ -32,14 +32,30 @@ def train(args, labeled, resume_from, ckpt_file):
     """
     Train function to train on the target data
     """
+    ########Set reproduceablility 
 
+    seed = int(42)
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed) 
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
     # hyperparameters
+    config_file = "yolov3.cfg"
     epochs, batch_size = args["train_epochs"], args["batch_size"]
-    lr = 1e-2
-    weight_decay = 1e-2
-    accumulated_batches = 4
-    best_mAP = 0.0
-    checkpointsaveinterval = 5
+    accumulated_batches = args["accumulated_batches"]
+    best_mAP = args["best_mAP"]
+    # Get hyper parameters
+    hyperparams = parse_model_config(config_file)[0]
+    learning_rate = float(hyperparams["learning_rate"])
+    momentum = float(hyperparams["momentum"])
+    decay = float(hyperparams["decay"])
+    burn_in = int(hyperparams["burn_in"])
+    backbone_freeze =1
+    checkpointsaveinterval = args["checkpointsaveinterval"]
     datamap = getdatasetstate(args,
         split="train",
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
@@ -49,7 +65,7 @@ def train(args, labeled, resume_from, ckpt_file):
         trainDataset, batch_size=batch_size, shuffle=True, num_workers=2
     )
 
-    config_file = "yolov3.cfg"
+    
     model = Darknet(config_file).to(device)
     model.load_weights(os.path.join(args["WEIGHTS_DIR"], "darknet53.conv.74"))
     model.train()
@@ -57,11 +73,11 @@ def train(args, labeled, resume_from, ckpt_file):
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
 
     # resume model and optimizer from previous loop
-    if resume_from is not None:
-        model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
+    if resume_from is not None and not args["weightsclear"]:
+        model.load_weights(os.path.join(args["LOG_DIR"], resume_from))
 
     for epoch in tqdm(range(epochs), desc="Training"):
-        optimizer.zero_grad()
+        
         losses_x = (
             losses_y
         ) = (
@@ -71,6 +87,20 @@ def train(args, labeled, resume_from, ckpt_file):
         ) = (
             losses_conf
         ) = losses_cls = losses_recall = losses_precision = batch_loss = 0.0
+
+        if backbone_freeze:
+            if epoch < 30:
+                for i, (name, p) in enumerate(model.named_parameters()):
+                    if int(name.split('.')[1]) < 75:  # if layer < 75
+                        p.requires_grad = False
+            elif epoch >= 30:
+                for i, (name, p) in enumerate(model.named_parameters()):
+                    if int(name.split('.')[1]) < 75:  # if layer < 75
+                        p.requires_grad = True
+
+        optimizer.zero_grad()
+
+
         for n_batch, (_, imgs, targets) in enumerate(trainDataloader):
             imgs = Variable(imgs.type(Tensor))
             targets = Variable(targets.type(Tensor), requires_grad=False)
@@ -123,7 +153,8 @@ def train(args, labeled, resume_from, ckpt_file):
             model.seen += imgs.size(0)
 
         if epoch % checkpointsaveinterval == 0:
-            model.save_weights("%s/%s" % (args["EXPT_DIR"], ckpt_file))
+            model.save_weights("%s/%s" % (args["LOG_DIR"], ckpt_file))
+            model.save_weights("%s/%s" % (args["LOG_DIR"], "ckptepoch_"+str(epoch)))
 
     return
 
@@ -135,7 +166,7 @@ def test(args, ckpt_file):
     object detection metrics, edit and include your own metrics if necessary
     and rebuild the app
     """
-    batch_size = 8
+    batch_size = args["batch_size"]
     datamap = getdatasetstate(args, split="val")
     # WARNING HARDCODED VALUE at 100
     testDataset = ListDataset(list(datamap.values())[:100])
@@ -145,7 +176,7 @@ def test(args, ckpt_file):
     config_file = "yolov3.cfg"
     print("Loading trained model to perform Test task")
     model = Darknet(config_file).to(device)
-    model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
+    model.load_weights(os.path.join(args["LOG_DIR"], ckpt_file))
     model.eval()
     predix = 0
     predictions = {}
@@ -210,7 +241,7 @@ def infer(args, unlabeled, ckpt_file):
     Infer function to infer on the unlabelled data
     """
 
-    batch_size = 8
+    batch_size = args["batch_size"]
     datamap = getdatasetstate(args,
         split="train"
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
@@ -222,7 +253,7 @@ def infer(args, unlabeled, ckpt_file):
     config_file = "yolov3.cfg"
     print("Loading trained model to perform Infer task")
     model = Darknet(config_file).to(device)
-    model.load_weights(os.path.join(args["EXPT_DIR"], ckpt_file))
+    model.load_weights(os.path.join(args["LOG_DIR"], ckpt_file))
     model.eval()
     predix = 0
     predictions = {}
