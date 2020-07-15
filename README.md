@@ -131,7 +131,7 @@ source env/bin/activate
 If you are a paying customer, then you will have access to our backend. You will need to take the backend IP address that we give you and you can set it in the alectio_sdk/flask_wrapper/config.json file under the "backend_ip" key, or alternatively use this script to enter replace the currently empty value in the config file.
 
 ```
-python set_backend_ip.py 127.0.0.1
+python set_backend_ip.py <backend-ip>
 ```
 After setting up the backend ip address, you can proceed to installing the repository. Make sure to set the ip address first, then pip install.
 

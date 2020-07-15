@@ -288,9 +288,9 @@ def infer(args, unlabeled, ckpt_file):
             total += cls.size(0)
             correct += (predicted == cls).sum().item()
             for j in range(len(outputs)):
-                outputs_fin[k] = {}
-                outputs_fin[k]["prediction"] = predicted[j].item()
-                outputs_fin[k]["pre_softmax"] = outputs[j].cpu().numpy()
+                outputs_fin[unlabeled[k]] = {}
+                outputs_fin[unlabeled[k]]["prediction"] = predicted[j].item()
+                outputs_fin[unlabeled[k]]["pre_softmax"] = outputs[j].cpu().numpy()
                 k += 1
 
     return {"outputs": outputs_fin}

@@ -17,44 +17,41 @@ Before getting started, please make sure you completed the [initial installation
 
 To recap, the steps were setting up a virtual environment and then installing the AlectioSDK in that environment. 
 
-To install the AlectioSDK from within the current directory (`./examples/NLP_classification`) run:
+To install the AlectioSDK from within the current directory (`./examples/NLP_classification_embeddings`) run:
 
 ```
 pip install ../../.
 ```
-
-Next, go to the Alectio Frontend and download the API key by hitting the `DOWNLOAD API KEY` button. This will download a file called `credentials.json` which you should place in the current working directory (`./examples/NLP_classification`).
-
 ### 2. Get Code, Data and Dependencies 
 
 First, point your terminal to the directory of this Readme file. Your terminal should look like this:
 ```bash 
-(env)$~/AlectioSDK/examples/NLP_classification
+(env)$~/AlectioSDK/examples/NLP_classification_embeddings
 ```
-Then, clone the `SDK_Reuters` branch of the topic classification repo. 
+Then, clone the `Huggingface` branch of the topic classification repo. 
 ```shell
-git clone --depth 1 -b SDK_Reuters --single-branch git@gitlab.com:AntonMu/reuters_hedwig.git
+git clone --depth 1 git@gitlab.com:AntonMu/huggingface.git
 ```
-If successful, you should have a folder within your SDK repo called `reuters_hedwig`. It should look like this:
+If succesfull, you should have a folder within your SDK repo called `huggingface`. It should look like this:
 
 ```
 ├── examples
-│   ├── NLP_classification
-│   │   └── reuters_hedwig
+│   ├── NLP_classification_embeddings
+│   │   └── huggingface
 │   ├── image_classification
 │   ├── object_detection
 │   └── topic_classification
 ```
 
-Then install pytorch with
+Then install huggingface with
 
 ```
-pip install torch==1.5.0+cu92 torchvision==0.6.0+cu92 -f https://download.pytorch.org/whl/torch_stable.html
+pip install huggingface/.
 
 ```
 and then the remaining requirements via:
 ```
-pip install -r reuters_hedwig/requirements.txt
+pip install -r huggingface/examples/requirements.txt
 ```
 
 ### 4. Build Model
