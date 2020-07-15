@@ -4,6 +4,8 @@ Created on Fri Jun 12 19:59:21 2020
 
 @author: arun
 """
+
+
 def crop(img, size):
     """
     Crop the image concentrically to the desired size.
@@ -14,7 +16,7 @@ def crop(img, size):
     (h, w, c) = img.shape
     x = int((w - size[0]) / 2)
     y = int((h - size[1]) / 2)
-    return img[y:(y + size[1]), x:(x + size[0]), :]
+    return img[y : (y + size[1]), x : (x + size[0]), :]
 
 
 def crop_generator(batches, size):
