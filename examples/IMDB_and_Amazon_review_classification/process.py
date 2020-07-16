@@ -24,68 +24,151 @@ def getdatasetstate(args={}):
     return {k: k for k in range(args["train_size"])}
 
 '''
-All purpose method for loading in data
+Helper method for Amazon Review's dataset
+'''
+def modify_label(x):
+    if(x > 3):
+        return 1 #positive
+    elif (x < 3):
+        return 0
+    else:
+        return -1
+
+'''
+All purpose method for loading in data for both the IMDB and Amazon Reviews Datasets
 stage: train, test, or infer
 indices: indices to select data from, default None, means we select all indices in train
 '''
 def load_data(stage, args, indices=None):
-    nlp = spacy.load("en_core_web_sm")
-    data = pd.read_csv("imdb_reviews.csv")
-    
-    raw_data = {'review' : [example for example in data["review"]], 'sentiment': [example for example in data["sentiment"]]}
-    
-    df = pd.DataFrame(raw_data, columns=["review", "sentiment"])
-    df["sentiment"] = df["sentiment"].apply(process_labels)
 
-    # create train and validation set 
-    train, test = train_test_split(df, test_size=1-args["split_train"], random_state=314)
+    if (args["DATASET"] == "AMAZON"):
 
-    print("Length of the train set is", len(train))
-    print("Length of the test set is", len(test))
-    
-    train_aug = train
-    if (indices and (stage=="train" or stage=="infer")):
-        train_aug = train.iloc[indices, :]
+        data = pd.read_csv("amazon_review_full_csv/train.csv", header=None)
+        data[0] = data[0].apply(lambda x: modify_label(x))
+        data = data.drop(data[data[0] == -1].index)
+        #set random state on sample to keep this the same each time - we're doing this to decrease the amount of data we train on and decrease the trainng time
+        data = data.sample(frac=args["AMAZON_DATSET_TRAINING_RATIO"], random_state=42) #sample a small portion of the data to decrease training time
+        
+        raw_data = {'review' : [example for example in data[2]], 'sentiment': [example for example in data[0]]}
+        df = pd.DataFrame(raw_data, columns=["review", "sentiment"])
 
-    train_aug.to_csv("train.csv", index=False)
-    train.to_csv("train_orig.csv", index=False)
-    test.to_csv("test.csv", index=False)
+        # create train and validation set 
+        train, val = train_test_split(df, test_size=1-args["split_train"], shuffle=True, random_state=42)
 
-    TEXT = torchtext.data.Field(tokenize="spacy", include_lengths = True, tokenizer_language="en_core_web_sm")
-    LABEL = torchtext.data.Field(sequential=False, use_vocab=False)
+        train_aug = train
+        if (indices and (stage=="train" or stage=="infer")):
+            train_aug = train.iloc[indices, :]
 
-    path = "./train.csv"
+        train.to_csv("train_orig.csv", index=False)
+        val.to_csv("test.csv", index=False)
+        train_aug.to_csv("train.csv", index=False)
+        
+        nlp = spacy.load("en_core_web_sm", disable=['ner', 'parser', 'tagger']) #load spacy and disable some features of it to decrease tokenization time
 
-    if(stage=="test"):
-        path = "./test.csv"
+        TEXT = torchtext.data.Field(tokenize="spacy", include_lengths = True, batch_first=False, tokenizer_language="en_core_web_sm")
+        LABEL = torchtext.data.LabelField()
 
-    datafields = [("review", TEXT), ("sentiment", LABEL)]
-    
-    tabular_dataset = TabularDataset(
+        datafields = [("review", TEXT), ("sentiment", LABEL)]
+        
+        print("Starting to create tabular data")
+
+        path = "./train.csv"
+
+        if(stage=="test"):
+            path = "./test.csv"
+
+
+        tabular_dataset = TabularDataset (
                 path=path,
                 format='csv',
                 skip_header=True, 
                 fields=datafields)
 
-    train_default_tabular_dataset = TabularDataset(
-                path="./train_orig.csv",
-                format='csv',
-                skip_header=True, 
-                fields=datafields)
-    
-    TEXT.build_vocab(train_default_tabular_dataset, #Vocab size should be constant, to avoid size mismatches later on. 
-                 max_size = args["MAX_VOCAB_SIZE"], 
-                 vectors = "glove.6B.100d", 
-                 unk_init = torch.Tensor.normal_)
-    
-    LABEL.build_vocab(train_default_tabular_dataset)
+        train_default_tabular_dataset = TabularDataset(
+                    path="./train_orig.csv",
+                    format='csv',
+                    skip_header=True, 
+                    fields=datafields)
 
-    iterator = torchtext.data.Iterator(
-        tabular_dataset, 
-        batch_size = args["batch_size"],
-        device = device)
+        MAX_VOCAB_SIZE = len(train_default_tabular_dataset) 
+        TEXT.build_vocab(train_default_tabular_dataset, #keep vocab size constant to avoid size mismatches later on
+                    max_size = MAX_VOCAB_SIZE, 
+                    vectors = "glove.6B.100d", 
+                    unk_init = torch.Tensor.normal_)
 
-    return (iterator, TEXT, LABEL, tabular_dataset)
+        LABEL.build_vocab(train_default_tabular_dataset)
+
+        BATCH_SIZE = 64
+
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+        iterator = torchtext.data.Iterator(
+            tabular_dataset, 
+            batch_size = BATCH_SIZE,
+            device = device)
+
+        return (iterator, TEXT, LABEL, tabular_dataset)
+    else:
+
+        nlp = spacy.load("en_core_web_sm")
+        data = pd.read_csv("imdb_reviews.csv")
+        
+        raw_data = {'review' : [example for example in data["review"]], 'sentiment': [example for example in data["sentiment"]]}
+        
+        df = pd.DataFrame(raw_data, columns=["review", "sentiment"])
+        df["sentiment"] = df["sentiment"].apply(process_labels)
+
+        # create train and validation set 
+        train, test = train_test_split(df, test_size=1-args["split_train"], random_state=314)
+
+        print("Length of the train set is", len(train))
+        print("Length of the test set is", len(test))
+        
+        train_aug = train
+        if (indices and (stage=="train" or stage=="infer")):
+            train_aug = train.iloc[indices, :]
+
+        train_aug.to_csv("train.csv", index=False)
+        train.to_csv("train_orig.csv", index=False)
+        test.to_csv("test.csv", index=False)
+
+        TEXT = torchtext.data.Field(tokenize="spacy", include_lengths = True, tokenizer_language="en_core_web_sm")
+        LABEL = torchtext.data.Field(sequential=False, use_vocab=False)
+
+        path = "./train.csv"
+
+        if(stage=="test"):
+            path = "./test.csv"
+
+        datafields = [("review", TEXT), ("sentiment", LABEL)]
+        
+        tabular_dataset = TabularDataset(
+                    path=path,
+                    format='csv',
+                    skip_header=True, 
+                    fields=datafields)
+
+        train_default_tabular_dataset = TabularDataset(
+                    path="./train_orig.csv",
+                    format='csv',
+                    skip_header=True, 
+                    fields=datafields)
+
+        print("Attributes to the example object:", dir(train_default_tabular_dataset[0]))
+        
+        TEXT.build_vocab(train_default_tabular_dataset, #Vocab size should be constant, to avoid size mismatches later on. 
+                    max_size = args["MAX_VOCAB_SIZE"], 
+                    vectors = "glove.6B.100d", 
+                    unk_init = torch.Tensor.normal_)
+        
+        LABEL.build_vocab(train_default_tabular_dataset)
+
+        iterator = torchtext.data.Iterator(
+            tabular_dataset, 
+            batch_size = args["batch_size"],
+            device = device)
+
+        return (iterator, TEXT, LABEL, tabular_dataset)
 
 def process_labels(dat):
     if(dat == "positive"):
@@ -307,13 +390,15 @@ def infer(args, unlabeled, ckpt_file):
 
                 predictions[unlabeled[predix]]["prediction"] = prediction
 
-                predictions[unlabeled[predix]]["pre_softmax"] = [logit_fn(sig_prediction.cpu()), logit_fn(1-sig_prediction.cpu())]
+                predictions[unlabeled[predix]]["pre_softmax"] = [[logit_fn(sig_prediction.cpu()), logit_fn(1-sig_prediction.cpu())]]
 
                 #print(predictions[unlabeled[predix]]["pre_softmax"])
 
                 predix+=1
             
             pbar.update()
+
+    print("The predictions are", predictions)
 
     return {"outputs": predictions}
 
@@ -334,6 +419,8 @@ if __name__ == "__main__":
     labeled = list(range(1000))
     resume_from = None
     ckpt_file = "ckpt_0"
+
+    print("----- Training on the ", args["DATASET"], "dataset!")
 
     print("Testing getdatasetstate")
     getdatasetstate(args=args)

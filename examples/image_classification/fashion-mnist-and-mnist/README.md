@@ -6,6 +6,9 @@
 
 Make sure you are on the `develop` branch, with `fashion-mnist` as your working directory. 
 
+Note: If you want to run an MNIST task, set the DATASET argument in config.yaml to "MNIST", 
+otherwise if you want to run FASHION-MNIST, set the DATASET argument in config.yaml to "Fashion". 
+
 Configure demo state
 1. Create a data directory `mkdir data` and a log directory `mkdir log`
 3. Modify hyper-parameters in the `config.yaml` file as needed (to set the train_epochs, batch_size, learning rate, momentum, etc)
