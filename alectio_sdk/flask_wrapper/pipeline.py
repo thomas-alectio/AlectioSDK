@@ -101,7 +101,7 @@ class Pipeline(object):
             demopayload = {
                 "project_id": "5e1ec656aa8e11ea8c639afd8b723gds",
                 "user_id": "adc12714bb3a11eab6053af9d318993f",
-                "experiment_id": "e0a6d7d29e2611ea97c23af9d3189111",
+                "experiment_id": "e0a6d7d29e2611ea97c23af9d3189111102",
                 "bucket_name": "alectio-company-demos",
                 "type": "Object Detection",
             }
