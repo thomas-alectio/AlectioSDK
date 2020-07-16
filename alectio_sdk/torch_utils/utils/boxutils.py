@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import numpy as np
 
+
 def bbox_iou(box1, box2, x1y1x2y2=True):
     """
     Returns the IoU of two bounding boxes

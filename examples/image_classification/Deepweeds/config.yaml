@@ -2,8 +2,9 @@ sample_payload: 'sample_payload.json'
 EXPT_DIR : "./outputs"
 DATA_DIR : "./data"
 MODEL_DIRECTORY : "./models"
-IMAGEDATA_DIR : "./data/images/"
-LABEL_DIRECTORY : "./data/labels/"
+OUTPUT_DIRECTORY: './ckpts'
+IMG_DIRECTORY : "/home/ubuntu/AlectioSDK/examples/image_classification/Deepweeds/data/images"
+LABEL_DIRECTORY : "/home/ubuntu/AlectioSDK/examples/image_classification/Deepweeds/data/labels"
 WEIGHTS_DIR : "./models"
 exp_name: "Deepweeds"
 
@@ -23,4 +24,4 @@ LR_PATIENCE : 16
 INITIAL_LR : 0.0001
 CLASSES : [0, 1, 2, 3, 4, 5, 6, 7, 8]
 CLASSES_STR : ['0', '1', '2', '3', '4', '5', '6', '7','8']
-MODELNAME: resnet                                                               #### support for [resnet, inception]
+MODELNAME: resnet                                                       #### support for [resnet, inception]

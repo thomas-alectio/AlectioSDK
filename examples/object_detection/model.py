@@ -9,6 +9,7 @@ from torch.autograd import Variable
 from collections import defaultdict
 from alectio_sdk.torch_utils.utils import non_max_suppression, bbox_iou
 
+
 def create_modules(module_defs):
     """
     Constructs module list of layer blocks from module configuration in module_defs
@@ -54,16 +55,18 @@ def create_modules(module_defs):
             modules.add_module("maxpool_%d" % i, maxpool)
 
         elif module_def["type"] == "upsample":
-            upsample = nn.Upsample(scale_factor=int(module_def["stride"]), mode="nearest")
+            upsample = nn.Upsample(
+                scale_factor=int(module_def["stride"]), mode="nearest"
+            )
             modules.add_module("upsample_%d" % i, upsample)
 
         elif module_def["type"] == "route":
             layers = [int(x) for x in module_def["layers"].split(",")]
-            #filters = sum([output_filters[layer_i] for layer_i in layers])
+            # filters = sum([output_filters[layer_i] for layer_i in layers])
             filters = 0
             for layer_i in layers:
-                if(layer_i > 0):
-                    filters += output_filters[layer_i+1]
+                if layer_i > 0:
+                    filters += output_filters[layer_i + 1]
                 else:
                     filters += output_filters[layer_i]
             modules.add_module("route_%d" % i, EmptyLayer())
@@ -90,9 +93,17 @@ def create_modules(module_defs):
     return hyperparams, module_list
 
 
-
 def build_targets(
-    pred_boxes, pred_conf, pred_cls, target, anchors, num_anchors, num_classes, grid_size, ignore_thres, img_dim
+    pred_boxes,
+    pred_conf,
+    pred_cls,
+    target,
+    anchors,
+    num_anchors,
+    num_classes,
+    grid_size,
+    ignore_thres,
+    img_dim,
 ):
     nB = target.size(0)
     nA = num_anchors
@@ -106,7 +117,7 @@ def build_targets(
     th = torch.zeros(nB, nA, nG, nG)
     tconf = torch.ByteTensor(nB, nA, nG, nG).fill_(0)
     tcls = torch.ByteTensor(nB, nA, nG, nG, nC).fill_(0)
-    #print("tARGETS SHAPE" ,target.shape[1])
+    # print("tARGETS SHAPE" ,target.shape[1])
     nGT = 0
     nCorrect = 0
     for b in range(nB):
@@ -121,12 +132,14 @@ def build_targets(
             gw = target[b, t, 3] * nG
             gh = target[b, t, 4] * nG
             # Get grid box indices
-            gi = int(torch.clamp(gx,0, nG-1))
+            gi = int(torch.clamp(gx, 0, nG - 1))
             gj = int(gy)
             # Get shape of gt box
             gt_box = torch.FloatTensor(np.array([0, 0, gw, gh])).unsqueeze(0)
             # Get shape of anchor box
-            anchor_shapes = torch.FloatTensor(np.concatenate((np.zeros((len(anchors), 2)), np.array(anchors)), 1))
+            anchor_shapes = torch.FloatTensor(
+                np.concatenate((np.zeros((len(anchors), 2)), np.array(anchors)), 1)
+            )
             # Calculate iou between gt and anchor shapes
             anch_ious = bbox_iou(gt_box, anchor_shapes)
             # Where the overlap is larger than threshold set mask to zero (ignore)
@@ -148,7 +161,7 @@ def build_targets(
             th[b, best_n, gj, gi] = math.log(gh / anchors[best_n][1] + 1e-16)
             # One-hot encoding of label
             target_label = int(target[b, t, 0])
-            #print("Target label =" , target_label)
+            # print("Target label =" , target_label)
             tcls[b, best_n, gj, gi, target_label] = 1
             tconf[b, best_n, gj, gi] = 1
 
@@ -159,9 +172,7 @@ def build_targets(
             if iou > 0.5 and pred_label == target_label and score > 0.5:
                 nCorrect += 1
 
-
     return nGT, nCorrect, mask, conf_mask, tx, ty, tw, th, tconf, tcls
-
 
 
 def parse_model_config(path):
@@ -169,17 +180,17 @@ def parse_model_config(path):
     Parses yolo-v3 layer configuration file
     returns: module definitions
     """
-    file = open(path, 'r')
-    lines = file.read().split('\n')
-    lines = [x for x in lines if x and not x.startswith('#')]
-    lines = [x.rstrip().lstrip() for x in lines] # get rid of fringe whitespaces
+    file = open(path, "r")
+    lines = file.read().split("\n")
+    lines = [x for x in lines if x and not x.startswith("#")]
+    lines = [x.rstrip().lstrip() for x in lines]  # get rid of fringe whitespaces
     module_defs = []
     for line in lines:
-        if line.startswith('['): # This marks the start of a new block
+        if line.startswith("["):  # This marks the start of a new block
             module_defs.append({})
-            module_defs[-1]['type'] = line[1:-1].rstrip()
-            if module_defs[-1]['type'] == 'convolutional':
-                module_defs[-1]['batch_normalize'] = 0
+            module_defs[-1]["type"] = line[1:-1].rstrip()
+            if module_defs[-1]["type"] == "convolutional":
+                module_defs[-1]["batch_normalize"] = 0
         else:
             key, value = line.split("=")
             value = value.strip()
@@ -222,7 +233,9 @@ class YOLOLayer(nn.Module):
         LongTensor = torch.cuda.LongTensor if x.is_cuda else torch.LongTensor
         ByteTensor = torch.cuda.BoolTensor if x.is_cuda else torch.BoolTensor
 
-        prediction = x.view(nB, nA, self.bbox_attrs, nG, nG).permute(0, 1, 3, 4, 2).contiguous()
+        prediction = (
+            x.view(nB, nA, self.bbox_attrs, nG, nG).permute(0, 1, 3, 4, 2).contiguous()
+        )
 
         # Get outputs
         x = torch.sigmoid(prediction[..., 0])  # Center x
@@ -234,8 +247,12 @@ class YOLOLayer(nn.Module):
 
         # Calculate offsets for each grid
         grid_x = torch.arange(nG).repeat(nG, 1).view([1, 1, nG, nG]).type(FloatTensor)
-        grid_y = torch.arange(nG).repeat(nG, 1).t().view([1, 1, nG, nG]).type(FloatTensor)
-        scaled_anchors = FloatTensor([(a_w / stride, a_h / stride) for a_w, a_h in self.anchors])
+        grid_y = (
+            torch.arange(nG).repeat(nG, 1).t().view([1, 1, nG, nG]).type(FloatTensor)
+        )
+        scaled_anchors = FloatTensor(
+            [(a_w / stride, a_h / stride) for a_w, a_h in self.anchors]
+        )
         anchor_w = scaled_anchors[:, 0:1].view((1, nA, 1, 1))
         anchor_h = scaled_anchors[:, 1:2].view((1, nA, 1, 1))
 
@@ -270,7 +287,6 @@ class YOLOLayer(nn.Module):
             nProposals = int((pred_conf > 0.5).sum().item())
             recall = float(nCorrect / nGT) if nGT else 1
             precision = float(nCorrect / nProposals) if nProposals else 0
-            
 
             # Handle masks
             mask = Variable(mask.type(ByteTensor))
@@ -286,18 +302,20 @@ class YOLOLayer(nn.Module):
 
             # Get conf mask where gt and where there is no gt
             conf_mask_true = mask
-            #conf_mask_false = conf_mask - mask
-            conf_mask_false = torch.logical_xor(conf_mask,mask)
+            # conf_mask_false = conf_mask - mask
+            conf_mask_false = torch.logical_xor(conf_mask, mask)
 
             # Mask outputs to ignore non-existing objects
             loss_x = self.mse_loss(x[mask], tx[mask])
             loss_y = self.mse_loss(y[mask], ty[mask])
             loss_w = self.mse_loss(w[mask], tw[mask])
             loss_h = self.mse_loss(h[mask], th[mask])
-            loss_conf = self.bce_loss(pred_conf[conf_mask_false], tconf[conf_mask_false]) + self.bce_loss(
-                pred_conf[conf_mask_true], tconf[conf_mask_true]
+            loss_conf = self.bce_loss(
+                pred_conf[conf_mask_false], tconf[conf_mask_false]
+            ) + self.bce_loss(pred_conf[conf_mask_true], tconf[conf_mask_true])
+            loss_cls = (1 / nB) * self.ce_loss(
+                pred_cls[mask], torch.argmax(tcls[mask], 1)
             )
-            loss_cls = (1 / nB) * self.ce_loss(pred_cls[mask], torch.argmax(tcls[mask], 1))
             loss = loss_x + loss_y + loss_w + loss_h + loss_conf + loss_cls
 
             return (
@@ -331,9 +349,8 @@ class YOLOLayer(nn.Module):
                 ),
                 -1,
             )
-            
-            
-            return output,rawclassout
+
+            return output, rawclassout
 
 
 class Darknet(nn.Module):
@@ -353,7 +370,9 @@ class Darknet(nn.Module):
         output = []
         self.losses = defaultdict(float)
         layer_outputs = []
-        for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
+        for i, (module_def, module) in enumerate(
+            zip(self.module_defs, self.module_list)
+        ):
             if module_def["type"] in ["convolutional", "upsample", "maxpool"]:
                 x = module(x)
             elif module_def["type"] == "route":
@@ -370,24 +389,26 @@ class Darknet(nn.Module):
                         self.losses[name] += loss
                 # Test phase: Get detections
                 else:
-                    x,pre_sig = module(x)
+                    x, pre_sig = module(x)
                 output.append(x)
             layer_outputs.append(x)
 
         self.losses["recall"] /= 3
         self.losses["precision"] /= 3
-        return sum(output) if is_training else (torch.cat(output, 1) ,pre_sig)
+        return sum(output) if is_training else (torch.cat(output, 1), pre_sig)
 
-    def load_weights(self, weights_path, cutoff = -1):
+    def load_weights(self, weights_path, cutoff=-1):
         """Parses and loads the weights stored in 'weights_path'"""
         # Parses and loads the weights stored in 'weights_path'
         # @:param cutoff  - save layers between 0 and cutoff (cutoff = -1 -> all are saved)
 
-        if weights_path.endswith('darknet53.conv.74'):
+        if weights_path.endswith("darknet53.conv.74"):
             cutoff = 75
         # Open the weights file
         fp = open(weights_path, "rb")
-        header = np.fromfile(fp, dtype=np.int32, count=5)  # First five are header values
+        header = np.fromfile(
+            fp, dtype=np.int32, count=5
+        )  # First five are header values
 
         # Needed to write header when saving weights
         self.header_info = header
@@ -397,7 +418,9 @@ class Darknet(nn.Module):
         fp.close()
 
         ptr = 0
-        for i, (module_def, module) in enumerate(zip(self.module_defs[:cutoff], self.module_list[:cutoff])):
+        for i, (module_def, module) in enumerate(
+            zip(self.module_defs[:cutoff], self.module_list[:cutoff])
+        ):
             if module_def["type"] == "convolutional":
                 conv_layer = module[0]
                 if module_def["batch_normalize"]:
@@ -405,30 +428,42 @@ class Darknet(nn.Module):
                     bn_layer = module[1]
                     num_b = bn_layer.bias.numel()  # Number of biases
                     # Bias
-                    bn_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(bn_layer.bias)
+                    bn_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(
+                        bn_layer.bias
+                    )
                     bn_layer.bias.data.copy_(bn_b)
                     ptr += num_b
                     # Weight
-                    bn_w = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(bn_layer.weight)
+                    bn_w = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(
+                        bn_layer.weight
+                    )
                     bn_layer.weight.data.copy_(bn_w)
                     ptr += num_b
                     # Running Mean
-                    bn_rm = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(bn_layer.running_mean)
+                    bn_rm = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(
+                        bn_layer.running_mean
+                    )
                     bn_layer.running_mean.data.copy_(bn_rm)
                     ptr += num_b
                     # Running Var
-                    bn_rv = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(bn_layer.running_var)
+                    bn_rv = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(
+                        bn_layer.running_var
+                    )
                     bn_layer.running_var.data.copy_(bn_rv)
                     ptr += num_b
                 else:
                     # Load conv. bias
                     num_b = conv_layer.bias.numel()
-                    conv_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(conv_layer.bias)
+                    conv_b = torch.from_numpy(weights[ptr : ptr + num_b]).view_as(
+                        conv_layer.bias
+                    )
                     conv_layer.bias.data.copy_(conv_b)
                     ptr += num_b
                 # Load conv. weights
                 num_w = conv_layer.weight.numel()
-                conv_w = torch.from_numpy(weights[ptr : ptr + num_w]).view_as(conv_layer.weight)
+                conv_w = torch.from_numpy(weights[ptr : ptr + num_w]).view_as(
+                    conv_layer.weight
+                )
                 conv_layer.weight.data.copy_(conv_w)
                 ptr += num_w
 
@@ -444,7 +479,9 @@ class Darknet(nn.Module):
         self.header_info.tofile(fp)
 
         # Iterate through layers
-        for i, (module_def, module) in enumerate(zip(self.module_defs[:cutoff], self.module_list[:cutoff])):
+        for i, (module_def, module) in enumerate(
+            zip(self.module_defs[:cutoff], self.module_list[:cutoff])
+        ):
             if module_def["type"] == "convolutional":
                 conv_layer = module[0]
                 # If batch norm, load bn first

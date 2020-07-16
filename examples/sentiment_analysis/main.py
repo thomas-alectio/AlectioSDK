@@ -17,10 +17,11 @@ app = Pipeline(
     test_fn=test,
     infer_fn=infer,
     getstate_fn=getdatasetstate,
-    args=args,
+    args=args
 )
 
 if __name__ == "__main__":
     # payload = json.load(open(args["sample_payload"], "r"))
-    # app._one_loop(args=args, payload=payload)
+    # print(args)
+    # app._one_loop(payload=payload, args = args)
     app(debug=True)
