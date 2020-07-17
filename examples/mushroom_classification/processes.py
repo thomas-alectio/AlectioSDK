@@ -26,6 +26,7 @@ def train(args, labeled, resume_from, ckpt_file):
     lr = args["learning_rate"]
     momentum = args["momentum"]
     epochs = args["train_epochs"]
+
     train_split = args["split_train"]
     
     CSV_FILE = "./data/mushrooms.csv"
@@ -55,7 +56,7 @@ def train(args, labeled, resume_from, ckpt_file):
     for epoch in tqdm(range(args["train_epochs"]), desc="Training"):
 
         running_loss = 0
-    
+
         for i, batch in enumerate(train_loader, start=0):
             data, labels = batch
             
@@ -67,13 +68,18 @@ def train(args, labeled, resume_from, ckpt_file):
             loss = criterion(output, labels)
             loss.backward()
             optimizer.step()
-            
+
             running_loss += loss.item()
-            
-            if (i%1000):
-                print("epoch: {} batch: {} running-loss: {}".format(epoch + 1, i + 1, running_loss/1000), end="\r")
+
+            if i % 1000:
+                print(
+                    "epoch: {} batch: {} running-loss: {}".format(
+                        epoch + 1, i + 1, running_loss / 1000
+                    ),
+                    end="\r",
+                )
                 running_loss = 0
-    
+
     print("Finished Training. Saving the model as {}".format(ckpt_file))
 
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
@@ -85,6 +91,7 @@ def train(args, labeled, resume_from, ckpt_file):
 def test(args, ckpt_file):
     print("========== In the test step ==========")
     batch_size = args["batch_size"]
+
     lr = args["learning_rate"]
     momentum = args["momentum"]
     epochs = args["train_epochs"]
@@ -144,6 +151,7 @@ def test(args, ckpt_file):
 
 
 def infer(args, unlabeled, ckpt_file):
+
     print("========== In the inference step ==========")
     batch_size = args["batch_size"]
     lr = args["learning_rate"]
@@ -197,6 +205,7 @@ def infer(args, unlabeled, ckpt_file):
     #print("predictions",predictions)
 
     return {"outputs": predictions}
+
 
 if __name__ == "__main__":
 

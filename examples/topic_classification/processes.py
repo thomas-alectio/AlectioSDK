@@ -69,16 +69,19 @@ class TextClassificationDataset(torch.utils.data.Dataset):
 def _create_data_from_iterator(vocab, iterator, include_unk):
     data = []
     labels = []
-    with tqdm(unit_scale=0, unit='lines') as t:
+    with tqdm(unit_scale=0, unit="lines") as t:
         for cls, tokens in iterator:
             if include_unk:
                 tokens = torch.tensor([vocab[token] for token in tokens])
             else:
-                token_ids = list(filter(lambda x: x is not Vocab.UNK, [vocab[token]
-                                                                       for token in tokens]))
+                token_ids = list(
+                    filter(
+                        lambda x: x is not Vocab.UNK, [vocab[token] for token in tokens]
+                    )
+                )
                 tokens = torch.tensor(token_ids)
             if len(tokens) == 0:
-                logging.info('Row contains no tokens.')
+                logging.info("Row contains no tokens.")
             data.append((cls, tokens))
             labels.append(cls)
             t.update(1)
@@ -90,7 +93,7 @@ def _csv_iterator(data_path, ngrams, yield_cls=False):
     with io.open(data_path, encoding="utf8") as f:
         reader = unicode_csv_reader(f)
         for row in reader:
-            tokens = ' '.join(row[1:])
+            tokens = " ".join(row[1:])
             tokens = tokenizer(tokens)
             if yield_cls:
                 yield int(row[0]) - 1, ngrams_iterator(tokens, ngrams)
@@ -98,33 +101,39 @@ def _csv_iterator(data_path, ngrams, yield_cls=False):
                 yield ngrams_iterator(tokens, ngrams)
 
 
-def _setup_datasets(dataset_name, root='.data', ngrams=1, vocab=None, include_unk=False):
-    root = os.path.join(root, 'ag_news_csv')
+def _setup_datasets(
+    dataset_name, root=".data", ngrams=1, vocab=None, include_unk=False
+):
+    root = os.path.join(root, "ag_news_csv")
     extracted_files = os.listdir(root)
 
     for fname in extracted_files:
-        if fname.endswith('train.csv'):
+        if fname.endswith("train.csv"):
             train_csv_path = os.path.join(root, fname)
-        if fname.endswith('test.csv'):
+        if fname.endswith("test.csv"):
             test_csv_path = os.path.join(root, fname)
 
     if vocab is None:
-        logging.info('Building Vocab based on {}'.format(train_csv_path))
+        logging.info("Building Vocab based on {}".format(train_csv_path))
         vocab = build_vocab_from_iterator(_csv_iterator(train_csv_path, ngrams))
     else:
         if not isinstance(vocab, Vocab):
             raise TypeError("Passed vocabulary is not of type Vocab")
-    logging.info('Vocab has {} entries'.format(len(vocab)))
-    logging.info('Creating training data')
+    logging.info("Vocab has {} entries".format(len(vocab)))
+    logging.info("Creating training data")
     train_data, train_labels = _create_data_from_iterator(
-        vocab, _csv_iterator(train_csv_path, ngrams, yield_cls=True), include_unk)
-    logging.info('Creating testing data')
+        vocab, _csv_iterator(train_csv_path, ngrams, yield_cls=True), include_unk
+    )
+    logging.info("Creating testing data")
     test_data, test_labels = _create_data_from_iterator(
-        vocab, _csv_iterator(test_csv_path, ngrams, yield_cls=True), include_unk)
+        vocab, _csv_iterator(test_csv_path, ngrams, yield_cls=True), include_unk
+    )
     if len(train_labels ^ test_labels) > 0:
         raise ValueError("Training and test labels don't match")
-    return (TextClassificationDataset(vocab, train_data, train_labels),
-            TextClassificationDataset(vocab, test_data, test_labels))
+    return (
+        TextClassificationDataset(vocab, train_data, train_labels),
+        TextClassificationDataset(vocab, test_data, test_labels),
+    )
 
 
 def AG_NEWS(*args, **kwargs):
@@ -171,7 +180,8 @@ def train(args, labeled, resume_from, ckpt_file):
 
     global train_dataset, test_dataset
     train_dataset, test_dataset = AG_NEWS(
-        root='./data', ngrams=args["N_GRAMS"], vocab=None)
+        root="./data", ngrams=args["N_GRAMS"], vocab=None
+    )
 
     global VOCAB_SIZE, EMBED_DIM, NUN_CLASS
     VOCAB_SIZE = len(train_dataset.get_vocab())
@@ -179,7 +189,12 @@ def train(args, labeled, resume_from, ckpt_file):
     NUN_CLASS = len(train_dataset.get_labels())
 
     chosen_train_dataset = Subset(train_dataset, labeled)
-    trainloader = DataLoader(chosen_train_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)
+    trainloader = DataLoader(
+        chosen_train_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        collate_fn=generate_batch,
+    )
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(net.parameters(), lr=lr)
@@ -220,7 +235,9 @@ def train(args, labeled, resume_from, ckpt_file):
 
 def test(args, ckpt_file):
     batch_size = args["batch_size"]
-    testloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch)
+    testloader = DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, collate_fn=generate_batch
+    )
 
     predictions, targets = [], []
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
@@ -247,7 +264,12 @@ def test(args, ckpt_file):
 def infer(args, unlabeled, ckpt_file):
     unlabeled = Subset(train_dataset, unlabeled)
     unlabeled_loader = torch.utils.data.DataLoader(
-        unlabeled, batch_size=args["batch_size"], shuffle=False, num_workers=2, collate_fn=generate_batch)
+        unlabeled,
+        batch_size=args["batch_size"],
+        shuffle=False,
+        num_workers=2,
+        collate_fn=generate_batch,
+    )
 
     net = TextSentiment(VOCAB_SIZE, EMBED_DIM, NUN_CLASS).to(device)
     ckpt = torch.load(os.path.join(args["EXPT_DIR"], ckpt_file))
@@ -266,9 +288,9 @@ def infer(args, unlabeled, ckpt_file):
             total += cls.size(0)
             correct += (predicted == cls).sum().item()
             for j in range(len(outputs)):
-                outputs_fin[k] = {}
-                outputs_fin[k]["prediction"] = predicted[j].item()
-                outputs_fin[k]["pre_softmax"] = outputs[j].cpu().numpy()
+                outputs_fin[unlabeled[k]] = {}
+                outputs_fin[unlabeled[k]]["prediction"] = predicted[j].item()
+                outputs_fin[unlabeled[k]]["pre_softmax"] = outputs[j].cpu().numpy()
                 k += 1
 
     return {"outputs": outputs_fin}
