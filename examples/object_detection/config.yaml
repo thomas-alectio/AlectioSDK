@@ -6,7 +6,7 @@ TRAINIMAGEDATA_DIR : "./data/images/train"
 TESTIMAGEDATA_DIR : "./data/images/test"
 WEIGHTS_DIR : "./weights"
 exp_name: "test"
-onprem: False                             ####### set to True by default unless you give us permissions to view your data and model
+onprem: True                             ####### set to True by default unless you give us permissions to view your data and model
 demoname: "coco"                          ####### set to a demo name when on prem is false
 weightsclear: True
 
