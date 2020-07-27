@@ -422,9 +422,6 @@ class Pipeline(object):
             confusion_matrix = sklearn.metrics.confusion_matrix(
                 ground_truth, predictions
             )
-            num_queried_per_class = {
-                k: v for k, v in enumerate(confusion_matrix.sum(axis=1))
-            }
             acc_per_class = {
                 k: v.round(3)
                 for k, v in enumerate(
@@ -436,16 +433,24 @@ class Pipeline(object):
             FN = confusion_matrix.sum(axis=1) - np.diag(confusion_matrix)
             TP = confusion_matrix.diagonal()
             TN = confusion_matrix.sum() - (FP + FN + TP)
+            precision = TP / (TP + FP)
+            recall    = TP / (TP + FN)
+            f1_score  = 2 * precision * recall / (precision + recall)
             label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
 
             metrics = {
                 "accuracy": accuracy,
-                "confusion_matrix": confusion_matrix,
+                "f1_score_per_class": {k:v for (k, v) in enumerate(f1_score)},
+                "f1_score": f1_score.mean(),
+                "precision_per_class": {k:v for (k, v) in enumerate(precision)},
+                "precision": precision.mean(),
+                "recall_per_class": {k:v for (k, v) in enumerate(recall)},
+                "recall": recall.mean(),
+                "confusion_matrix": confusion_matrix.tolist(),
                 "acc_per_class": acc_per_class,
                 "label_disagreement": label_disagreement,
-                "num_queried_per_class": num_queried_per_class,
             }
-
+            
         # save metrics to S3
         object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
         self.client.multi_part_upload_with_s3(

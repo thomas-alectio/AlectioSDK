@@ -10,6 +10,7 @@ if len(tf.config.experimental.list_physical_devices("GPU")) > 0:
 else:
     print("Using CPU")
 
+print("Loading dataset ...")
 dataset, info = tfds.load(
     "yelp_polarity_reviews/subwords8k",
     data_dir="./data",
@@ -22,14 +23,15 @@ train_dset, test_dset = (
     list(dataset["test"].as_numpy_iterator()),
 )
 
+
 encoder = info.features["text"].encoder
 
 
 def getdatasetstate(args={}):
-    return {k: k for k in range(560000)}
+    return {k: k for k in range(len(train_dset))}
 
 
-def train(labeled, resume_from, ckpt_file):
+def train(args, labeled, resume_from, ckpt_file):
     batch_size = args["batch_size"]
     epochs = args["train_epochs"]
 
@@ -77,7 +79,7 @@ def test(args, ckpt_file):
         (tf.TensorShape([None]), tf.TensorShape([])),
     ).padded_batch(batch_size)
 
-    model = tf.keras.models.load_model(os.path.join("log", ckpt_file))
+    model = tf.keras.models.load_model(os.path.join(args["EXPT_DIR"], ckpt_file))
     model.compile(
         loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
         optimizer=tf.keras.optimizers.Adam(1e-4),
@@ -115,7 +117,7 @@ def infer(args, unlabeled, ckpt_file):
         (tf.TensorShape([None]), tf.TensorShape([])),
     ).padded_batch(batch_size)
 
-    model = tf.keras.models.load_model(os.path.join("log/", ckpt_file))
+    model = tf.keras.models.load_model(os.path.join(args["EXPT_DIR"], ckpt_file))
 
     model.compile(
         loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
@@ -132,10 +134,10 @@ def infer(args, unlabeled, ckpt_file):
         pred[pred > 0] = 1
 
         for j in range(len(pred)):
-            outputs_fin[unlabeled[i]] = {}
-            outputs_fin[unlabeled[i]]["prediction"] = pred[j]
-            outputs_fin[unlabeled[i]]["pre_softmax"] = [
-                utils.logit(1 - tf.math.sigmoid(outputs[j])),
+            outputs_fin[i] = {}
+            outputs_fin[i]["prediction"] = pred[j]
+            outputs_fin[i]["pre_softmax"] = [
+                utils.logit(1 - tf.math.sigmoid(outputs[j])).numpy(),
                 outputs[j],
             ]
             i += 1
@@ -144,6 +146,7 @@ def infer(args, unlabeled, ckpt_file):
 
 
 if __name__ == "__main__":
+    # for debugging purposes
     labeled = list(range(100))
     resume_from = None
     ckpt_file = "ckpt_0"
