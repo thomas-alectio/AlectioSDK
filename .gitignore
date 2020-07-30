@@ -1,9 +1,15 @@
 # SDK metadata
-config.json
 images/
 labels/
 test_labels.txt
 train_labels.txt
+
+# Data files
+examples/tabular_data/ember/ember_2017_2/*1
+examples/tabular_data/ember/ember/
+examples/tabular_data/ember/sample_payload.json
+examples/tabular_data/ember/Ember.ipynb
+examples/tabular_data/ember/scripts/
 
 # OSX generated files
 .DS_Store
@@ -158,6 +164,5 @@ log
 vector
 
 # VSCode
-
 .vscode
 
