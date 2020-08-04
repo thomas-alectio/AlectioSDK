@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="alectio_sdk",
-    version="0.0.1",
+    version="0.1.0",
     author="Alectio",
     author_email="admin@alectio.com",
     description="Integrate customer side ML application with the Alectio Platform",
