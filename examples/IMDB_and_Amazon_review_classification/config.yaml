@@ -5,9 +5,16 @@ WEIGHTS_DIR : "./weights"
 exp_name: "mushroom-experiment-1"
 
 ### TRAIN FUNCTION ARGS ###
-train_epochs: 5
+train_epochs: 1
 batch_size: 64
-train_size: 6499
 learning_rate: 1e-4
-momentum: 0.9
 split_train: 0.80
+MAX_VOCAB_SIZE: 25000
+EMBEDDING_DIM: 100
+HIDDEN_DIM: 256
+N_LAYERS: 2
+DROPOUT: 0.5
+train_size: 40000
+test_size: 10000
+DATASET: "AMAZON"
+AMAZON_DATSET_TRAINING_RATIO: 0.03
