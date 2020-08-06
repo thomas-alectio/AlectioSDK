@@ -23,6 +23,10 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sklearn.externals import joblib
 
+#modules for testing
+import argparse
+import yaml, json
+
 
 class Pipeline(object):
     r"""
@@ -54,12 +58,15 @@ class Pipeline(object):
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
         self.args = args
-        self.client = S3Client()
+        self.client = S3Client() #boto3.client('s3') #
+        
+
+        
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
         # self._notifyserverstatus()
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             self.demopayload = self._setdemovars(self.args["demoname"])
         else:
             self.demopayload = {
@@ -77,6 +84,8 @@ class Pipeline(object):
         # one loop
         self.app.add_url_rule("/one_loop", "one_loop", self.one_loop, methods=["POST"])
         self.app.add_url_rule("/end_exp", "end_exp", self.end_exp, methods=["POST"])
+        self.app.add_url_rule("/dummy", "dummy", self.dummy, methods=["POST"])
+
 
     def _notifyserverstatus(self, logdir):
         logging.basicConfig(
@@ -107,6 +116,26 @@ class Pipeline(object):
             }
             return demopayload
 
+    '''
+        For cloning of demos, we need to copy over the cur_loop-1 .pth checkpoint files and store them in log.
+        This allows us to resume training from an arbitrary loop.
+        Note: this function will only be called if cur_loop > 0
+    '''
+    def copyovercheckpoints(self, bucket_name, project_id, experiment_id, cur_loop, log_dir):
+        # Retrieve the list of existing buckets
+        s3 = boto3.resource('s3')
+        demo_bucket = s3.Bucket(bucket_name)
+        checkpoints_to_download = list(range(cur_loop))
+
+        for checkpoint in checkpoints_to_download:
+            print(f"downloading file ckpt_{checkpoint}.pth")
+            demo_bucket.download_file(f'{project_id}/{experiment_id}/ckpt_{checkpoint}.pth', f"{log_dir}/ckpt_{checkpoint}.pth")
+
+    
+    def dummy(self):
+        return jsonify({"Message": "Dummy"})
+
+    
     def one_loop(self):
         # Get payload args
 
@@ -123,6 +152,7 @@ class Pipeline(object):
         self.logdir = payload["experiment_id"]
         self._checkdirs(self.logdir)
         self.args["LOG_DIR"] = self.logdir
+        
         self._notifyserverstatus(self.logdir)
         self.app.logger.info("Valid payload arguments extracted")
         self.app.logger.info("Initializing process to train and optimize your model")
@@ -162,6 +192,7 @@ class Pipeline(object):
             app._one_loop(args)
 
         """
+
         # payload = json.load(open(args["sample_payload"]))
         self.app.logger.info("Extracting essential experiment params")
 
@@ -235,7 +266,7 @@ class Pipeline(object):
             self.client.multi_part_upload_with_s3(
                 self.state_json, self.bucket_name, object_key, "pickle"
             )
-            if not self.args["onprem"]:
+            if "onprem" in self.args and not self.args["onprem"]:
                 demoobject_key = os.path.join(self.demoexpt_dir, "data_map.pkl")
                 demometaobject_key = os.path.join(
                     os.path.dirname(self.demoexpt_dir), "meta.json"
@@ -254,6 +285,14 @@ class Pipeline(object):
                 )
             self.app.logger.info("Reference creation complete")
         else:
+
+            #check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
+            if not os.path.isfile(os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}.pth")):
+                #need to download the checkpoint files from S3            
+                self.app.logger.info("Starting to copy checkpoints for cloned experiment...")
+                self.copyovercheckpoints(payload['bucket_name'], payload['project_id'], payload['experiment_id'], payload['cur_loop'], self.args["EXPT_DIR"])
+                self.app.logger.info("Finished downloading checkpoints for cloned experiment")
+
             self.app.logger.info("Resuming from a checkpoint from a previous loop ")
             # two dag approach needs to refer to the previous checkpoint
             self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
@@ -319,7 +358,7 @@ class Pipeline(object):
         self.client.multi_part_upload_with_s3(
             insights, self.bucket_name, object_key, "pickle"
         )
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demoinsightsobject_key = os.path.join(
                 self.demoexpt_dir, "insights_{}.pkl".format(self.cur_loop)
             )
@@ -361,7 +400,7 @@ class Pipeline(object):
             predictions, self.bucket_name, object_key, "pickle"
         )
 
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demopredsobject_key = os.path.join(
                 self.demoexpt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
             )
@@ -380,7 +419,7 @@ class Pipeline(object):
             self.client.multi_part_upload_with_s3(
                 ground_truth, self.bucket_name, object_key, "pickle"
             )
-            if not self.args["onprem"]:
+            if "onprem" in self.args and not self.args["onprem"]:
                 demogtsobject_key = os.path.join(
                     self.demoexpt_dir, "test_ground_truth.pkl"
                 )
@@ -395,6 +434,7 @@ class Pipeline(object):
         return
 
     def compute_metrics(self, predictions, ground_truth):
+        metrics = {}
         if self.type == "Object Detection":
             det_boxes, det_labels, det_scores, true_boxes, true_labels = batch_to_numpy(
                 predictions, ground_truth
@@ -456,7 +496,7 @@ class Pipeline(object):
         self.client.multi_part_upload_with_s3(
             metrics, self.bucket_name, object_key, "pickle"
         )
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demometricsobject_key = os.path.join(
                 self.demoexpt_dir, "metrics_{}.pkl".format(self.cur_loop)
             )
@@ -509,7 +549,7 @@ class Pipeline(object):
         )
         """
 
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demoinferobject_key = os.path.join(
                 self.demoexpt_dir, "infer_outputs_{}.pkl".format(self.cur_loop)
             )
@@ -558,3 +598,24 @@ class Pipeline(object):
         p = psutil.Process(os.getpid())
         p.terminate()
         return "Experiment complete"
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", help="Path to config.yaml", required=True)
+    args = parser.parse_args()
+
+    with open(args.config, "r") as stream:
+        args = yaml.safe_load(stream)
+
+    # put the train/test/infer processes into the constructor
+    app = Pipeline(
+        name=args["exp_name"],
+        train_fn=None,
+        test_fn=None,
+        infer_fn=None,
+        getstate_fn=None,
+        args=args
+    )
+    payload = json.load(open(args["sample_payload"], "r"))
+    app._one_loop(args=args, payload=payload)
+    #app(debug=True)
