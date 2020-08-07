@@ -84,8 +84,6 @@ class Pipeline(object):
         # one loop
         self.app.add_url_rule("/one_loop", "one_loop", self.one_loop, methods=["POST"])
         self.app.add_url_rule("/end_exp", "end_exp", self.end_exp, methods=["POST"])
-        self.app.add_url_rule("/dummy", "dummy", self.dummy, methods=["POST"])
-
 
     def _notifyserverstatus(self, logdir):
         logging.basicConfig(
@@ -130,11 +128,6 @@ class Pipeline(object):
         for checkpoint in checkpoints_to_download:
             print(f"downloading file ckpt_{checkpoint}.pth")
             demo_bucket.download_file(f'{project_id}/{experiment_id}/ckpt_{checkpoint}.pth', f"{log_dir}/ckpt_{checkpoint}.pth")
-
-    
-    def dummy(self):
-        return jsonify({"Message": "Dummy"})
-
     
     def one_loop(self):
         # Get payload args
