@@ -112,27 +112,6 @@ class Pipeline(object):
             }
             return demopayload
 
-    """
-        For cloning of demos, we need to copy over the cur_loop-1 .pth checkpoint files and store them in log.
-        This allows us to resume training from an arbitrary loop.
-        Note: this function will only be called if cur_loop > 0
-    """
-
-    def copyovercheckpoints(
-        self, bucket_name, project_id, experiment_id, cur_loop, log_dir
-    ):
-        # Retrieve the list of existing buckets
-        s3 = boto3.resource("s3")
-        demo_bucket = s3.Bucket(bucket_name)
-        checkpoints_to_download = list(range(cur_loop))
-
-        for checkpoint in checkpoints_to_download:
-            print(f"downloading file ckpt_{checkpoint}.pth")
-            demo_bucket.download_file(
-                f"{project_id}/{experiment_id}/ckpt_{checkpoint}.pth",
-                f"{log_dir}/ckpt_{checkpoint}.pth",
-            )
-
     def one_loop(self):
         # Get payload args
 
@@ -291,7 +270,7 @@ class Pipeline(object):
                 self.app.logger.info(
                     "Starting to copy checkpoints for cloned experiment..."
                 )
-                self.copyovercheckpoints(
+                self.client.download_checkpoints(
                     payload["bucket_name"],
                     payload["project_id"],
                     payload["experiment_id"],
@@ -607,25 +586,3 @@ class Pipeline(object):
         p = psutil.Process(os.getpid())
         p.terminate()
         return "Experiment complete"
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", help="Path to config.yaml", required=True)
-    args = parser.parse_args()
-
-    with open(args.config, "r") as stream:
-        args = yaml.safe_load(stream)
-
-    # put the train/test/infer processes into the constructor
-    app = Pipeline(
-        name=args["exp_name"],
-        train_fn=None,
-        test_fn=None,
-        infer_fn=None,
-        getstate_fn=None,
-        args=args,
-    )
-    payload = json.load(open(args["sample_payload"], "r"))
-    app._one_loop(args=args, payload=payload)
-    # app(debug=True)
