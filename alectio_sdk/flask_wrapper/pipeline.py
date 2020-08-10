@@ -23,7 +23,7 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sklearn.externals import joblib
 
-#modules for testing
+# modules for testing
 import argparse
 import yaml, json
 
@@ -58,10 +58,8 @@ class Pipeline(object):
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
         self.args = args
-        self.client = S3Client() #boto3.client('s3') #
-        
+        self.client = S3Client()  # boto3.client('s3') #
 
-        
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
@@ -114,21 +112,27 @@ class Pipeline(object):
             }
             return demopayload
 
-    '''
+    """
         For cloning of demos, we need to copy over the cur_loop-1 .pth checkpoint files and store them in log.
         This allows us to resume training from an arbitrary loop.
         Note: this function will only be called if cur_loop > 0
-    '''
-    def copyovercheckpoints(self, bucket_name, project_id, experiment_id, cur_loop, log_dir):
+    """
+
+    def copyovercheckpoints(
+        self, bucket_name, project_id, experiment_id, cur_loop, log_dir
+    ):
         # Retrieve the list of existing buckets
-        s3 = boto3.resource('s3')
+        s3 = boto3.resource("s3")
         demo_bucket = s3.Bucket(bucket_name)
         checkpoints_to_download = list(range(cur_loop))
 
         for checkpoint in checkpoints_to_download:
             print(f"downloading file ckpt_{checkpoint}.pth")
-            demo_bucket.download_file(f'{project_id}/{experiment_id}/ckpt_{checkpoint}.pth', f"{log_dir}/ckpt_{checkpoint}.pth")
-    
+            demo_bucket.download_file(
+                f"{project_id}/{experiment_id}/ckpt_{checkpoint}.pth",
+                f"{log_dir}/ckpt_{checkpoint}.pth",
+            )
+
     def one_loop(self):
         # Get payload args
 
@@ -145,7 +149,7 @@ class Pipeline(object):
         self.logdir = payload["experiment_id"]
         self._checkdirs(self.logdir)
         self.args["LOG_DIR"] = self.logdir
-        
+
         self._notifyserverstatus(self.logdir)
         self.app.logger.info("Valid payload arguments extracted")
         self.app.logger.info("Initializing process to train and optimize your model")
@@ -279,12 +283,24 @@ class Pipeline(object):
             self.app.logger.info("Reference creation complete")
         else:
 
-            #check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
-            if not os.path.isfile(os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}.pth")):
-                #need to download the checkpoint files from S3            
-                self.app.logger.info("Starting to copy checkpoints for cloned experiment...")
-                self.copyovercheckpoints(payload['bucket_name'], payload['project_id'], payload['experiment_id'], payload['cur_loop'], self.args["EXPT_DIR"])
-                self.app.logger.info("Finished downloading checkpoints for cloned experiment")
+            # check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
+            if not os.path.isfile(
+                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}.pth")
+            ):
+                # need to download the checkpoint files from S3
+                self.app.logger.info(
+                    "Starting to copy checkpoints for cloned experiment..."
+                )
+                self.copyovercheckpoints(
+                    payload["bucket_name"],
+                    payload["project_id"],
+                    payload["experiment_id"],
+                    payload["cur_loop"],
+                    self.args["EXPT_DIR"],
+                )
+                self.app.logger.info(
+                    "Finished downloading checkpoints for cloned experiment"
+                )
 
             self.app.logger.info("Resuming from a checkpoint from a previous loop ")
             # two dag approach needs to refer to the previous checkpoint
@@ -467,23 +483,23 @@ class Pipeline(object):
             TP = confusion_matrix.diagonal()
             TN = confusion_matrix.sum() - (FP + FN + TP)
             precision = TP / (TP + FP)
-            recall    = TP / (TP + FN)
-            f1_score  = 2 * precision * recall / (precision + recall)
+            recall = TP / (TP + FN)
+            f1_score = 2 * precision * recall / (precision + recall)
             label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
 
             metrics = {
                 "accuracy": accuracy,
-                "f1_score_per_class": {k:v for (k, v) in enumerate(f1_score)},
+                "f1_score_per_class": {k: v for (k, v) in enumerate(f1_score)},
                 "f1_score": f1_score.mean(),
-                "precision_per_class": {k:v for (k, v) in enumerate(precision)},
+                "precision_per_class": {k: v for (k, v) in enumerate(precision)},
                 "precision": precision.mean(),
-                "recall_per_class": {k:v for (k, v) in enumerate(recall)},
+                "recall_per_class": {k: v for (k, v) in enumerate(recall)},
                 "recall": recall.mean(),
                 "confusion_matrix": confusion_matrix.tolist(),
                 "acc_per_class": acc_per_class,
                 "label_disagreement": label_disagreement,
             }
-            
+
         # save metrics to S3
         object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
         self.client.multi_part_upload_with_s3(
@@ -592,6 +608,7 @@ class Pipeline(object):
         p.terminate()
         return "Experiment complete"
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="Path to config.yaml", required=True)
@@ -607,8 +624,8 @@ if __name__ == "__main__":
         test_fn=None,
         infer_fn=None,
         getstate_fn=None,
-        args=args
+        args=args,
     )
     payload = json.load(open(args["sample_payload"], "r"))
     app._one_loop(args=args, payload=payload)
-    #app(debug=True)
+    # app(debug=True)

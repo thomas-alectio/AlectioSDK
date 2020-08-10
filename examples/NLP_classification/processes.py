@@ -15,7 +15,7 @@ from reuters_hedwig.models.bert import __main__
 from models.bert.args import get_args
 
 
-def getdatasetstate(config_args={}): 
+def getdatasetstate(config_args={}):
     return {k: k for k in range(config_args["trainsize"])}
 
 
