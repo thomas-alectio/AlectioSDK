@@ -160,3 +160,14 @@ class S3Client:
         )
 
         return
+
+    def download_checkpoints(self, bucket_name, project_id, experiment_id, cur_loop, log_dir):
+        checkpoints_to_download = list(range(cur_loop))
+
+        for checkpoint in checkpoints_to_download:
+            print(f"downloading file ckpt_{checkpoint}.pth")
+            self.client.download_file(
+                f"{bucket_name}",
+                f"{project_id}/{experiment_id}/ckpt_{checkpoint}.pth",
+                f"{log_dir}/ckpt_{checkpoint}.pth",
+            )

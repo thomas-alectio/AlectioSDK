@@ -21,4 +21,5 @@ setup(
     packages=["ember"],
     package_data=package_data,
     install_requires=requires,
-    author_email="proth@endgame.com")
+    author_email="proth@endgame.com",
+)

@@ -15,12 +15,12 @@ app = Pipeline(
     test_fn=test,
     infer_fn=infer,
     getstate_fn=getdatasetstate,
-    args=args
+    args=args,
 )
 
 if __name__ == "__main__":
 
-    '''
+    """
     SAMPLE PAYLOAD
     payload = { "project_id": "adbc569e9c9511ea84dd0242ac110002",
                 "experiment_id": "cb09a5809c9511eaa1bf0242ac110002",
@@ -30,5 +30,5 @@ if __name__ == "__main__":
                 "bucket_name": "alectio-demo"}
 
     app._one_loop(payload, args=args)
-    '''
+    """
     app(debug=True)

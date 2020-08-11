@@ -23,6 +23,10 @@ import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sklearn.externals import joblib
 
+# modules for testing
+import argparse
+import yaml, json
+
 
 class Pipeline(object):
     r"""
@@ -54,12 +58,13 @@ class Pipeline(object):
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
         self.args = args
-        self.client = S3Client()
+        self.client = S3Client()  # boto3.client('s3') #
+
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
         # self._notifyserverstatus()
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             self.demopayload = self._setdemovars(self.args["demoname"])
         else:
             self.demopayload = {
@@ -123,6 +128,7 @@ class Pipeline(object):
         self.logdir = payload["experiment_id"]
         self._checkdirs(self.logdir)
         self.args["LOG_DIR"] = self.logdir
+
         self._notifyserverstatus(self.logdir)
         self.app.logger.info("Valid payload arguments extracted")
         self.app.logger.info("Initializing process to train and optimize your model")
@@ -162,6 +168,7 @@ class Pipeline(object):
             app._one_loop(args)
 
         """
+
         # payload = json.load(open(args["sample_payload"]))
         self.app.logger.info("Extracting essential experiment params")
 
@@ -235,7 +242,7 @@ class Pipeline(object):
             self.client.multi_part_upload_with_s3(
                 self.state_json, self.bucket_name, object_key, "pickle"
             )
-            if not self.args["onprem"]:
+            if "onprem" in self.args and not self.args["onprem"]:
                 demoobject_key = os.path.join(self.demoexpt_dir, "data_map.pkl")
                 demometaobject_key = os.path.join(
                     os.path.dirname(self.demoexpt_dir), "meta.json"
@@ -254,6 +261,26 @@ class Pipeline(object):
                 )
             self.app.logger.info("Reference creation complete")
         else:
+
+            # check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
+            if not os.path.isfile(
+                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}.pth")
+            ):
+                # need to download the checkpoint files from S3
+                self.app.logger.info(
+                    "Starting to copy checkpoints for cloned experiment..."
+                )
+                self.client.download_checkpoints(
+                    payload["bucket_name"],
+                    payload["project_id"],
+                    payload["experiment_id"],
+                    payload["cur_loop"],
+                    self.args["EXPT_DIR"],
+                )
+                self.app.logger.info(
+                    "Finished downloading checkpoints for cloned experiment"
+                )
+
             self.app.logger.info("Resuming from a checkpoint from a previous loop ")
             # two dag approach needs to refer to the previous checkpoint
             self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
@@ -319,7 +346,7 @@ class Pipeline(object):
         self.client.multi_part_upload_with_s3(
             insights, self.bucket_name, object_key, "pickle"
         )
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demoinsightsobject_key = os.path.join(
                 self.demoexpt_dir, "insights_{}.pkl".format(self.cur_loop)
             )
@@ -361,7 +388,7 @@ class Pipeline(object):
             predictions, self.bucket_name, object_key, "pickle"
         )
 
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demopredsobject_key = os.path.join(
                 self.demoexpt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
             )
@@ -380,7 +407,7 @@ class Pipeline(object):
             self.client.multi_part_upload_with_s3(
                 ground_truth, self.bucket_name, object_key, "pickle"
             )
-            if not self.args["onprem"]:
+            if "onprem" in self.args and not self.args["onprem"]:
                 demogtsobject_key = os.path.join(
                     self.demoexpt_dir, "test_ground_truth.pkl"
                 )
@@ -395,6 +422,7 @@ class Pipeline(object):
         return
 
     def compute_metrics(self, predictions, ground_truth):
+        metrics = {}
         if self.type == "Object Detection":
             det_boxes, det_labels, det_scores, true_boxes, true_labels = batch_to_numpy(
                 predictions, ground_truth
@@ -434,29 +462,29 @@ class Pipeline(object):
             TP = confusion_matrix.diagonal()
             TN = confusion_matrix.sum() - (FP + FN + TP)
             precision = TP / (TP + FP)
-            recall    = TP / (TP + FN)
-            f1_score  = 2 * precision * recall / (precision + recall)
+            recall = TP / (TP + FN)
+            f1_score = 2 * precision * recall / (precision + recall)
             label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
 
             metrics = {
                 "accuracy": accuracy,
-                "f1_score_per_class": {k:v for (k, v) in enumerate(f1_score)},
+                "f1_score_per_class": {k: v for (k, v) in enumerate(f1_score)},
                 "f1_score": f1_score.mean(),
-                "precision_per_class": {k:v for (k, v) in enumerate(precision)},
+                "precision_per_class": {k: v for (k, v) in enumerate(precision)},
                 "precision": precision.mean(),
-                "recall_per_class": {k:v for (k, v) in enumerate(recall)},
+                "recall_per_class": {k: v for (k, v) in enumerate(recall)},
                 "recall": recall.mean(),
                 "confusion_matrix": confusion_matrix.tolist(),
                 "acc_per_class": acc_per_class,
                 "label_disagreement": label_disagreement,
             }
-            
+
         # save metrics to S3
         object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
         self.client.multi_part_upload_with_s3(
             metrics, self.bucket_name, object_key, "pickle"
         )
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demometricsobject_key = os.path.join(
                 self.demoexpt_dir, "metrics_{}.pkl".format(self.cur_loop)
             )
@@ -509,7 +537,7 @@ class Pipeline(object):
         )
         """
 
-        if not self.args["onprem"]:
+        if "onprem" in self.args and not self.args["onprem"]:
             demoinferobject_key = os.path.join(
                 self.demoexpt_dir, "infer_outputs_{}.pkl".format(self.cur_loop)
             )

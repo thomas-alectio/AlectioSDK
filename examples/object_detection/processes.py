@@ -32,15 +32,15 @@ def train(args, labeled, resume_from, ckpt_file):
     """
     Train function to train on the target data
     """
-    ########Set reproduceablility 
+    ########Set reproduceablility
 
     seed = int(42)
     random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed) 
+    torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
     # hyperparameters
@@ -54,10 +54,10 @@ def train(args, labeled, resume_from, ckpt_file):
     momentum = float(hyperparams["momentum"])
     decay = float(hyperparams["decay"])
     burn_in = int(hyperparams["burn_in"])
-    backbone_freeze =1
+    backbone_freeze = 1
     checkpointsaveinterval = args["checkpointsaveinterval"]
-    datamap = getdatasetstate(args,
-        split="train",
+    datamap = getdatasetstate(
+        args, split="train",
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
     imglist = [v for k, v in datamap.items() if k in labeled]
     trainDataset = ListDataset(imglist)
@@ -65,7 +65,6 @@ def train(args, labeled, resume_from, ckpt_file):
         trainDataset, batch_size=batch_size, shuffle=True, num_workers=2
     )
 
-    
     model = Darknet(config_file).to(device)
     model.load_weights(os.path.join(args["WEIGHTS_DIR"], "darknet53.conv.74"))
     model.train()
@@ -77,7 +76,7 @@ def train(args, labeled, resume_from, ckpt_file):
         model.load_weights(os.path.join(args["LOG_DIR"], resume_from))
 
     for epoch in tqdm(range(epochs), desc="Training"):
-        
+
         losses_x = (
             losses_y
         ) = (
@@ -91,15 +90,14 @@ def train(args, labeled, resume_from, ckpt_file):
         if backbone_freeze:
             if epoch < 30:
                 for i, (name, p) in enumerate(model.named_parameters()):
-                    if int(name.split('.')[1]) < 75:  # if layer < 75
+                    if int(name.split(".")[1]) < 75:  # if layer < 75
                         p.requires_grad = False
             elif epoch >= 30:
                 for i, (name, p) in enumerate(model.named_parameters()):
-                    if int(name.split('.')[1]) < 75:  # if layer < 75
+                    if int(name.split(".")[1]) < 75:  # if layer < 75
                         p.requires_grad = True
 
         optimizer.zero_grad()
-
 
         for n_batch, (_, imgs, targets) in enumerate(trainDataloader):
             imgs = Variable(imgs.type(Tensor))
@@ -154,7 +152,7 @@ def train(args, labeled, resume_from, ckpt_file):
 
         if epoch % checkpointsaveinterval == 0:
             model.save_weights("%s/%s" % (args["LOG_DIR"], ckpt_file))
-            model.save_weights("%s/%s" % (args["LOG_DIR"], "ckptepoch_"+str(epoch)))
+            model.save_weights("%s/%s" % (args["LOG_DIR"], "ckptepoch_" + str(epoch)))
 
     return
 
@@ -242,8 +240,8 @@ def infer(args, unlabeled, ckpt_file):
     """
 
     batch_size = args["batch_size"]
-    datamap = getdatasetstate(args,
-        split="train"
+    datamap = getdatasetstate(
+        args, split="train"
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
     unlabelledmap = [v for k, v in datamap.items() if k in unlabeled]
     testDataset = ListDataset(unlabelledmap)
@@ -290,7 +288,7 @@ def getdatasetstate(args, split="train"):
         dataset = FolderWithPaths(args["TRAINIMAGEDATA_DIR"])
     else:
         dataset = FolderWithPaths(args["TESTIMAGEDATA_DIR"])
-        
+
     dataset.transform = tv.transforms.Compose(
         [tv.transforms.RandomCrop(32), tv.transforms.ToTensor()]
     )
@@ -307,7 +305,7 @@ def getdatasetstate(args, split="train"):
 if __name__ == "__main__":
     # debug
     # train
-    '''
+    """
     labeled = list(range(300))
     resume_from = None
     ckpt_file = "ckpt_0"
@@ -316,4 +314,4 @@ if __name__ == "__main__":
     train(labeled=labeled, resume_from=resume_from, ckpt_file=ckpt_file)
     print("Testing")
     test(ckpt_file)
-    '''
+    """
