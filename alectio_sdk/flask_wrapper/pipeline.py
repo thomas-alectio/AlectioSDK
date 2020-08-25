@@ -21,7 +21,7 @@ from .s3_client import S3Client
 from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
-from sklearn.externals import joblib
+import joblib
 
 # modules for testing
 import argparse
@@ -328,17 +328,27 @@ class Pipeline(object):
             self.labeled.extend(selected_indices)
         self.app.logger.info("Labelled records are ready to be trained")
         self.labeled.sort()  # Maintain increasing order
-        labels = self.train_fn(
-            args,
-            labeled=deepcopy(self.labeled),
-            resume_from=self.resume_from,
-            ckpt_file=self.ckpt_file,
-        )
+        
+        train_op = self.train_fn(
+                                args,
+                                labeled=deepcopy(self.labeled),
+                                resume_from=self.resume_from,
+                                ckpt_file=self.ckpt_file,
+                                )
+
+        if train_op is not None:
+            labels = train_op["labels"]
+            unique, counts = np.unique(labels, return_counts=True)
+            num_queried_per_class = {u:c for u, c in zip(unique, counts)}
 
         end = time.time()
 
         # @TODO compute insights from labels
-        insights = {"train_time": end - start}
+        if train_op is not None:
+            insights = {"train_time": end - start,"num_queried_per_class": num_queried_per_class}
+        else:
+            insights = {"train_time": end - start}
+
         object_key = os.path.join(
             self.expt_dir, "insights_{}.pkl".format(self.cur_loop)
         )
