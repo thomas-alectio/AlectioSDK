@@ -21,7 +21,7 @@ from .s3_client import S3Client
 from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
-import joblib
+from sklearn.externals import joblib
 
 # modules for testing
 import argparse
@@ -112,6 +112,28 @@ class Pipeline(object):
             }
             return demopayload
 
+    def _estimate_exp_time(self, last_time):
+        """
+        Estimates the compute time remaining for the experiment
+
+        Args:
+            train_times (list): training_times noted down so far
+            n_loop (int): total number of loops
+        """
+        def convert(seconds):
+            seconds = seconds % (24 * 3600)
+            hour = seconds // 3600
+            seconds %= 3600
+            minutes = seconds // 60
+            seconds %= 60
+
+            return "%d:%02d:%02d" % (hour, minutes, seconds)
+
+        loops_completed = self.cur_loop + 1
+        time_left = convert(last_time * (self.n_loop - loops_completed))
+        print("Estimated time left for the experiment: {}".format(time_left))
+        return time_left
+
     def one_loop(self):
         # Get payload args
 
@@ -124,7 +146,9 @@ class Pipeline(object):
             "user_id": request.get_json()["user_id"],
             "bucket_name": request.get_json()["bucket_name"],
             "type": request.get_json()["type"],
-        }
+            "n_rec": request.get_json()["n_rec"],
+            "n_loop": request.get_json()["n_loop"]
+            }
         self.logdir = payload["experiment_id"]
         self._checkdirs(self.logdir)
         self.args["LOG_DIR"] = self.logdir
@@ -179,6 +203,7 @@ class Pipeline(object):
         # Leave cur_loop - 1 when doing a 1 dag solution, when doing 2 dag cur_loop remains the same
         self.cur_loop = payload["cur_loop"]
         self.bucket_name = payload["bucket_name"]
+        self.n_loop = payload["n_loop"]
 
         # type of the ML problem
         self.type = payload["type"]
@@ -328,7 +353,7 @@ class Pipeline(object):
             self.labeled.extend(selected_indices)
         self.app.logger.info("Labelled records are ready to be trained")
         self.labeled.sort()  # Maintain increasing order
-        
+
         train_op = self.train_fn(
                                 args,
                                 labeled=deepcopy(self.labeled),
@@ -349,6 +374,7 @@ class Pipeline(object):
         else:
             insights = {"train_time": end - start}
 
+        self._estimate_exp_time(insights["train_time"])
         object_key = os.path.join(
             self.expt_dir, "insights_{}.pkl".format(self.cur_loop)
         )

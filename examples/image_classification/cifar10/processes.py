@@ -120,23 +120,24 @@ def infer(args, unlabeled, ckpt_file):
 
     correct, total, k = 0, 0, 0
     outputs_fin = {}
-    with torch.no_grad():
-        for i, data in tqdm(enumerate(unlabeled_loader), desc="Inferring"):
-            images, labels = data
-            images, labels = images.to(device), labels.to(device)
-            outputs = net(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+    for i, data in tqdm(enumerate(unlabeled_loader), desc="Inferring"):
+        images, labels = data
+        images, labels = images.to(device), labels.to(device)
+        outputs = net(images).data
+        # print("*" * 10)
+        # print(outputs.shape)
 
-            for j in range(len(outputs)):
-                outputs_fin[k] = {}
-                outputs_fin[k]["prediction"] = predicted[j].item()
-                outputs_fin[k]["pre_softmax"] = outputs[j].cpu().numpy()
-                k += 1
+        _, predicted = torch.max(outputs, 1)
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+        for j in range(len(outputs)):
+            outputs_fin[k] = {}
+            outputs_fin[k]["prediction"] = predicted[j].item()
+            outputs_fin[k]["pre_softmax"] = outputs[j].cpu().numpy().tolist()
+            k += 1
 
     return {"outputs": outputs_fin}
-
 
 if __name__ == "__main__":
     labeled = list(range(1000))

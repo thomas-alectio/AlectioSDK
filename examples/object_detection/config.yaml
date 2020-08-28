@@ -1,5 +1,5 @@
 sample_payload: 'sample_payload.json'
-EXPT_DIR : "./COCOexperiment"             ####### Will contain all experiment related checkpoints and other logs 
+EXPT_DIR : "./COCOexperiment"             ####### Will contain all experiment related checkpoints and other logs
 DATA_DIR : "./data"
 IMAGEDATA_DIR : "./data/images/"
 TRAINIMAGEDATA_DIR : "./data/images/train"
