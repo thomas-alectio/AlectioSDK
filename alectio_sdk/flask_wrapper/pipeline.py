@@ -131,7 +131,7 @@ class Pipeline(object):
 
         loops_completed = self.cur_loop + 1
         time_left = convert(last_time * (self.n_loop - loops_completed))
-        print("Estimated time left for the experiment: {}".format(time_left))
+        self.app.logger.info("Estimated time left for the experiment: {}".format(time_left))
         return time_left
 
     def one_loop(self):
