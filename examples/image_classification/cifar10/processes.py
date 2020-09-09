@@ -124,8 +124,6 @@ def infer(args, unlabeled, ckpt_file):
         images, labels = data
         images, labels = images.to(device), labels.to(device)
         outputs = net(images).data
-        # print("*" * 10)
-        # print(outputs.shape)
 
         _, predicted = torch.max(outputs, 1)
         total += labels.size(0)
