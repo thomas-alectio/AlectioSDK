@@ -60,12 +60,9 @@ class Pipeline(object):
         self.getstate_fn = getstate_fn
         self.args = args
         self.client = S3Client()
-        # dir_path = str(Path.home()) + '/.alectio'
-        # with open(os.path.join(dir_path, "config.json"), "r") as f:
-        #     self.config = json.load(f)
+        with open(os.path.join(dir_path, "config.json"), "r") as f:
+            self.config = json.load(f)
 
-        # with open(os.path.join(dir_path, "client_token.json"), "r") as f:
-        #     self.client_token = json.load(f)
         self.client_token = token
         # self._notifyserverstatus()
         if "onprem" in self.args and not self.args["onprem"]:
