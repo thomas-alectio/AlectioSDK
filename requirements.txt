@@ -15,3 +15,4 @@ Werkzeug==1.0.1
 scikit-learn==0.22.2
 gunicorn
 hurry.filesize
+psutil==5.7.0
