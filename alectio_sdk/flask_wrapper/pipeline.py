@@ -43,7 +43,7 @@ class Pipeline(object):
 
     """
 
-    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args, token):
         """
         sentry_sdk.init(
             dsn="https://4eedcc29fa7844828397dca4afc2db32@o409542.ingest.sentry.io/5282336",
@@ -60,13 +60,13 @@ class Pipeline(object):
         self.getstate_fn = getstate_fn
         self.args = args
         self.client = S3Client()
-        dir_path = str(Path.home()) + '/.alectio'
-        with open(os.path.join(dir_path, "config.json"), "r") as f:
-            self.config = json.load(f)
+        # dir_path = str(Path.home()) + '/.alectio'
+        # with open(os.path.join(dir_path, "config.json"), "r") as f:
+        #     self.config = json.load(f)
 
-        with open(os.path.join(dir_path, "client_token.json"), "r") as f:
-            self.client_token = json.load(f)
-
+        # with open(os.path.join(dir_path, "client_token.json"), "r") as f:
+        #     self.client_token = json.load(f)
+        self.client_token = token
         # self._notifyserverstatus()
         if "onprem" in self.args and not self.args["onprem"]:
             self.demopayload = self._setdemovars(self.args["demoname"])
