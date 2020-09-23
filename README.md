@@ -10,6 +10,7 @@ processes in a consistent manner. Customers need to implement 3 processes as pyt
 * A process to train the model
 * A process to test the model
 * A process to apply the model to infer on unlabeled data
+* A process to assign each data point in the dataset to a unique index (Refer to one of the examples to know how)
 
 ### Train the Model
 The logic for training the model should be implemented in this process. The function should look like:
