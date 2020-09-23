@@ -140,7 +140,7 @@ After setting up the backend ip address, you can proceed to installing the repos
 pip install .
 pip install -r requirements.txt
 ```
-### 3 Configure aws credentials
+### 3. Configure aws credentials
 We need to [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
 ```
 aws configure
