@@ -39,11 +39,7 @@ pip install -r requirements.txt
 
 ### 3. Download Pre-Processed Data
 
-First we need to [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
-```
-aws configure
-```
-and adding your AWS credentials. Next, you can create a data and a log directory in the current directory and download the data via:
+Next, you can create a data and a log directory in the current directory and download the data via:
 
 ```
 mkdir data
