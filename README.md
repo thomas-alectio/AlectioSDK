@@ -5,7 +5,7 @@ platform.
 It is designed for Alectio's clients, who prefer to keep their model and data on their on server.
 
 The package is currently under active development. More functionalities that aim to enhance robustness will be added soon, but for now the package provides a class `alectio_sdk.flask_wrapper.Pipeline` that inferfaces with customer-side
-processes in a consistent manner. Customers need to implement 3 processes as python functions:
+processes in a consistent manner. Customers need to implement 4 processes as python functions:
 
 * A process to train the model
 * A process to test the model
