@@ -140,6 +140,12 @@ After setting up the backend ip address, you can proceed to installing the repos
 pip install .
 pip install -r requirements.txt
 ```
-### 3. Run Examples
+### 3 Configure aws credentials
+We need to [configure the aws cli](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html) by running
+```
+aws configure
+```
+Fill in your credentials as requested on your terminal
+### 4. Run Examples
 
 The remaining installation instructions are detailed in the [examples](./examples) directory. We cover one example for [topic classification](./examples/topic_classification), one example for [image classification](./examples/image_classification) and one example for [object detection](./examples/object_detection).
