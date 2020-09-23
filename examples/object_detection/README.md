@@ -79,7 +79,7 @@ python processes.py
 Refer to main [AlectioSDK Readme](../../README.md) for general information regarding the
 arguments of this process.
 
-#### 6.Return of the Test Process
+#### Return of the Test Process
 You will need to run non-maximum suppression on the predictions on the test images and return
 the final detections along with the ground-truth bounding boxes and objects
 on each image.
@@ -134,12 +134,12 @@ difficulties (`Optional[List[{0,1}]]`)
    If you skip this field, then all objects are assumed to be non-difficult
 
 
-### 7. Build Infer Process
+### 6. Build Infer Process
 The infer process is used to apply the model to the unlabeled set to run inference.
 We will use the inferred output to estimate which of those unlabeled data will
 be most valuable to your model.
 
-#### 8. Return of the Infer Process
+#### Return of the Infer Process
 The return of the infer process is a dictionary
 ```python
 {"outputs": outputs}
@@ -169,7 +169,7 @@ pre_softmax (`List[List[float]]`):
 Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
 arguments of this process.
 
-### 10. Build Dataset state process
+### 7. Build Dataset state process
 The dataset state process helps the Alectio team to generate a reference database with a mapping between list of indices and the corresponding imagenames within your custom dataset object.
 The return of the `getdatasetstate` function is a dictionary. For example  a dict named ` trainstate ` that returns the indices(int) in the dataset object mapped to imagenames(str) will look like this
 
@@ -186,7 +186,7 @@ Refer to `processes.py` to get more information about the format of this functio
 
 
 
-### 11. Build Flask App
+### 8. Build Flask App
 Finally, to run the flask app, execute:
 
 ```
