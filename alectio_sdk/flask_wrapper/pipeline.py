@@ -22,6 +22,7 @@ from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sklearn.externals import joblib
+from pathlib import Path
 
 # modules for testing
 import argparse
@@ -42,7 +43,7 @@ class Pipeline(object):
 
     """
 
-    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args, token):
         """
         sentry_sdk.init(
             dsn="https://4eedcc29fa7844828397dca4afc2db32@o409542.ingest.sentry.io/5282336",
@@ -58,11 +59,11 @@ class Pipeline(object):
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
         self.args = args
-        self.client = S3Client()  # boto3.client('s3') #
-
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.client = S3Client()
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
+
+        self.client_token = token
         # self._notifyserverstatus()
         if "onprem" in self.args and not self.args["onprem"]:
             self.demopayload = self._setdemovars(self.args["demoname"])
@@ -161,15 +162,13 @@ class Pipeline(object):
         self.app.logger.info(
             "Your results for this loop should be visible in Alectio website shortly"
         )
-        print(returned_payload)
         backend_ip = self.config["backend_ip"]
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
-        print("Url for backend ", url)
+
+        headers = {"Authorization": "Bearer " + self.client_token['access_token']}
         status = requests.post(
-            url=url, json=returned_payload, auth=("auth", os.environ["ALECTIO_API_KEY"])
-        ).status_code
-        print("status =", status)
+            url=url, json=returned_payload, headers=headers).status_code
         if status == 200:
             self.app.logger.info(
                 "Experiment {} running".format(payload["experiment_id"])
