@@ -13,7 +13,7 @@ with open("README.md", "r") as fh:
 reqs = install_reqs
 setuptools.setup(
     name="alectio_sdk",
-    version="0.0.3",
+    version="0.1.2",
     author="Alectio",
     author_email="admin@alectio.com",
     description="Integrate customer side ML application with the Alectio Platform",
