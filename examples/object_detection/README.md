@@ -53,7 +53,7 @@ aws s3 cp s3://alectio-resources/cocoweights . --recursive
 
 For most part the data is preprocessed according to the Darknet convention. The only difference is that we use the `xyxy` format for the ground-truth bounding boxes.
 
-### 3. Build Train Process
+### 4. Build Train Process
 We will train a [Darknet yolov3](https://pjreddie.com/media/files/papers/YOLOv3.pdf) for
 this demo. The model is defined in `model.py` the configuration file that specifies the
 architecture of the model is defined in `yolov3.cfg`.
@@ -67,7 +67,7 @@ python model.py
 Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
 arguments of this process.
 
-### 4. Build Test Process
+### 5. Build Test Process
 The test process tests the model trained in each active learning loop.
 In this example, the test process is the `test` function defined
 in `processes.py`.
@@ -134,7 +134,7 @@ difficulties (`Optional[List[{0,1}]]`)
    If you skip this field, then all objects are assumed to be non-difficult
 
 
-### 5. Build Infer Process
+### 6. Build Infer Process
 The infer process is used to apply the model to the unlabeled set to run inference.
 We will use the inferred output to estimate which of those unlabeled data will
 be most valuable to your model.
@@ -169,7 +169,7 @@ pre_softmax (`List[List[float]]`):
 Refer to main [AlectioSDK ReadMe](../../README.md) for general information regarding the
 arguments of this process.
 
-### 6. Build Dataset state process
+### 7. Build Dataset state process
 The dataset state process helps the Alectio team to generate a reference database with a mapping between list of indices and the corresponding imagenames within your custom dataset object.
 The return of the `getdatasetstate` function is a dictionary. For example  a dict named ` trainstate ` that returns the indices(int) in the dataset object mapped to imagenames(str) will look like this
 
@@ -186,7 +186,7 @@ Refer to `processes.py` to get more information about the format of this functio
 
 
 
-### 7. Build Flask App
+### 8. Build Flask App
 Finally, to run the flask app, execute:
 
 ```

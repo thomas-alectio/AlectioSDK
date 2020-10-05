@@ -5,7 +5,7 @@ platform.
 It is designed for Alectio's clients, who prefer to keep their model and data on their on server.
 
 The package is currently under active development. More functionalities that aim to enhance robustness will be added soon, but for now the package provides a class `alectio_sdk.flask_wrapper.Pipeline` that inferfaces with customer-side
-processes in a consistent manner. Customers need to implement 3 processes as python functions:
+processes in a consistent manner. Customers need to implement 4 processes as python functions:
 
 * A process to train the model
 * A process to test the model
@@ -152,13 +152,6 @@ python3 -m venv env
 source env/bin/activate
 ```
 ### 2. Install AlectioSDK/requirements
-If you are a paying customer, then you will have access to our backend. You will need to take the backend IP address that we give you and you can set it in the alectio_sdk/flask_wrapper/config.json file under the "backend_ip" key, or alternatively use this script to enter replace the currently empty value in the config file.
-
-```
-python set_backend_ip.py <backend-ip>
-```
-After setting up the backend ip address, you can proceed to installing the repository. Make sure to set the ip address first, then pip install.
-
 ```
 pip install .
 pip install -r requirements.txt
