@@ -60,6 +60,7 @@ class Pipeline(object):
         self.getstate_fn = getstate_fn
         self.args = args
         self.client = S3Client()
+        dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
 
