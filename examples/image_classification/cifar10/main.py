@@ -15,10 +15,4 @@ AlectioPipeline  = Pipeline(
                             getstate_fn=getdatasetstate,
                             args=args,
 )
-
 app = AlectioPipeline.app
-
-if __name__ == "__main__":
-    # payload = json.load(open(args["sample_payload"], "r"))
-    # app._one_loop(args=args, payload=payload)
-    app.run()

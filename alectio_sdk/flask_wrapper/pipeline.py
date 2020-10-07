@@ -289,7 +289,7 @@ class Pipeline(object):
 
             # check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
             if not os.path.isfile(
-                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}.pth")
+                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}")
             ):
                 # need to download the checkpoint files from S3
                 self.app.logger.info(
