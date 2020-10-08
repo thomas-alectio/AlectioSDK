@@ -16,10 +16,4 @@ AlectioPipeline  = Pipeline(
                             args=args,
                             token='hPrjnEpRi0jLikGNNU8lIiCulCbdHAMJeIcBOc2XB4'
 )
-
 app = AlectioPipeline.app
-
-if __name__ == "__main__":
-    # payload = json.load(open(args["sample_payload"], "r"))
-    # app._one_loop(args=args, payload=payload)
-    app.run()
