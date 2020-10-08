@@ -167,7 +167,7 @@ class Pipeline(object):
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
 
-        headers = {"Authorization": "Bearer " + self.client_token['access_token']}
+        headers = {"Authorization": "Bearer " + self.client_token}
         status = requests.post(
             url=url, json=returned_payload, headers=headers).status_code
         if status == 200:
