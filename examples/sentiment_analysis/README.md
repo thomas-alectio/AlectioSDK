@@ -37,7 +37,7 @@ The train, test and infer processes are implemented in [`processes.py`](./proces
 Finally, to run the flask app, execute:
 
 ```
-python main.py --config config.yaml
+gunicorn --bind 0.0.0.0:5000 --timeout 2500000 main:app
 ```
 ## Return Types
 

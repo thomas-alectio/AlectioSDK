@@ -16,7 +16,7 @@ Set up environment
 5. Run `aws configure` to set up connection with AWS
 6. Install the alectio-sdk with `pip install ../../.` (assuming you are in this current directory).
 7. After activating your virtual environment (see project-level README for instructions), install all dependencies in the requirements.txt found in this repository `pip install -r requirements.txt`
-8. Finally, run `python main.py --config config.yaml` to start the traning process. 
+8. Finally, run `gunicorn --bind 0.0.0.0:5000 --timeout 2500000 main:app` to start the traning process. 
 
 ## Instructions for downloading the Urban Sound dataset
 1. Download the dataset from https://urbansounddataset.weebly.com/urbansound8k.html

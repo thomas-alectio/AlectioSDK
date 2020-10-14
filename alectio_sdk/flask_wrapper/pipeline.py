@@ -3,7 +3,6 @@ from flask import Flask, Response
 from flask import request
 from flask import send_file
 
-# from waitress import serve
 import numpy as np
 import json
 import requests
@@ -16,16 +15,16 @@ import boto3
 import json
 import logging
 import sklearn.metrics
+import joblib
+import sentry_sdk
+import argparse
+import yaml
+
 from copy import deepcopy
 from .s3_client import S3Client
 from alectio_sdk.metrics.object_detection import Metrics, batch_to_numpy
-import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
-from sklearn.externals import joblib
-
 # modules for testing
-import argparse
-import yaml, json
 
 
 class Pipeline(object):
@@ -289,7 +288,7 @@ class Pipeline(object):
 
             # check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
             if not os.path.isfile(
-                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}.pth")
+                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}")
             ):
                 # need to download the checkpoint files from S3
                 self.app.logger.info(

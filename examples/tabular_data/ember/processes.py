@@ -31,19 +31,19 @@ def preprocess_data(args):
     X_train, y_train, X_test, y_test = ember.read_vectorized_features(
         args["DATA_DIR"] + "/ember_2017_2/"
     )
-    X_orig_train = pd.DataFrame(X_train)
-    X_orig_test = pd.DataFrame(X_test)
-    y_orig_train = pd.DataFrame(y_train)
-    y_orig_test = pd.DataFrame(y_test)
+    X_train = pd.DataFrame(X_train)
+    X_test = pd.DataFrame(X_test)
+    y_train = pd.DataFrame(y_train)
+    y_test = pd.DataFrame(y_test)
 
-    train_samples = random.sample(list(X_orig_train.index), 100000)
-    test_samples = random.sample(list(X_orig_test.index), 25000)
+    '''
     X_train = X_orig_train.loc[train_samples, :]
     X_train.reset_index(inplace=True, drop=True)
     X_test = X_orig_test.loc[test_samples, :]
     X_test.reset_index(inplace=True, drop=True)
     y_train = pd.Series(y_orig_train.loc[train_samples, :].values.ravel())
     y_test = pd.Series(y_orig_test.loc[test_samples, :].values.ravel())
+    '''
 
     test_neg_label = [i for i, x in enumerate(y_test) if x == -1]
     X_test.drop(test_neg_label, axis=0, inplace=True)
@@ -56,6 +56,7 @@ def preprocess_data(args):
     y_train.drop(train_neg_label, axis=0, inplace=True)
     X_train.reset_index(drop=True, inplace=True)
     y_train.reset_index(drop=True, inplace=True)
+
 
     X_train = X_train[: args["TRAIN_SIZE"]]
     y_train = y_train[: args["TRAIN_SIZE"]]
@@ -87,6 +88,11 @@ def train(args, labeled, resume_from, ckpt_file):
         resume_from = os.path.join(args["EXPT_DIR"], resume_from)
         model = joblib.load(resume_from)
     # print(X_train.head)
+    print('size of X_train: ' + str(len(X_train)))
+    df1 = X_train[X_train.isna().any(axis=1)]
+    print(df1)
+    print(labeled)
+    exit()
     model.fit(X_train.loc[labeled], y_train[labeled])
     ckpt_path = os.path.join(args["EXPT_DIR"], ckpt_file)
     joblib.dump(model, ckpt_path)
@@ -130,7 +136,10 @@ def infer(args, unlabeled, ckpt_file):
 
 
 def getdatasetstate(args={}):
-    return {k: k for k in range(40000)}
+    if args.get('TRAIN_SIZE') is not None:
+        return {k: k for k in range(args['TRAIN_SIZE'])}
+    else:
+        return {k: k for k in range(100000)}
 
 
 if __name__ == "__main__":

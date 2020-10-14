@@ -69,5 +69,5 @@ python processes.py
 Finally, to run the flask app, execute:
 
 ```
-python main.py
+gunicorn --bind 0.0.0.0:5000 --timeout 2500000 main:app
 ```

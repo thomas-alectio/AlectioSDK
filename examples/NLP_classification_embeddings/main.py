@@ -5,36 +5,12 @@ from alectio_sdk.flask_wrapper import Pipeline
 from processes import train, test, infer, getdatasetstate
 import logging
 
-cwd = os.path.dirname(os.path.abspath(__file__))
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--config",
-    default=os.path.join(cwd, "config.yaml"),
-    type=str,
-    help="Path to config.yaml",
-)
-
-parser.add_argument(
-    "--api_config",
-    default=os.path.join(cwd, "credentials.json"),
-    type=str,
-    help="Path to credentials.json",
-)
-
-args = parser.parse_args()
-
-with open(args.api_config, "r") as stream:
-    api_key = json.load(stream)["token"]
-    logging.info("Setting Alectio API key.")
-    os.environ["ALECTIO_API_KEY"] = api_key
-
-with open(args.config, "r") as stream:
+with open("./config.yaml", "r") as stream:
     args = yaml.safe_load(stream)
 
 
 # put the train/test/infer processes into the constructor
-app = Pipeline(
+AlectioPipeline = Pipeline(
     name=args["exp_name"],
     train_fn=train,
     test_fn=test,
@@ -42,6 +18,8 @@ app = Pipeline(
     getstate_fn=getdatasetstate,
     args=args,
 )
+
+app = AlectioPipeline.app
 
 if __name__ == "__main__":
     # payload = json.load(open(args["sample_payload"], "r"))

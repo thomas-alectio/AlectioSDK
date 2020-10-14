@@ -1,14 +1,19 @@
 from alectio_sdk.flask_wrapper import Pipeline
 from processes import train, test, infer, getdatasetstate
 
+with open("./config.yaml", "r") as stream:
+    args = yaml.safe_load(stream)
+
 # put the train/test/infer processes into the constructor
-app = Pipeline(
-    name="cifar10",
+AlectioPipeline = Pipeline(
+    name=args["exp_name"],
     train_fn=train,
     test_fn=test,
     infer_fn=infer,
     getstate_fn=getdatasetstate,
 )
+
+app = AlectioPipeline.app
 
 if __name__ == "__main__":
 
