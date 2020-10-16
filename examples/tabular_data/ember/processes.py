@@ -63,41 +63,38 @@ def preprocess_data(args):
     X_test = X_test[: args["TEST_SIZE"]]
     y_test = y_test[: args["TEST_SIZE"]]
 
-    X_train.to_pickle(args["DATA_DIR"] + "X_train.pkl")
-    y_train.to_pickle(args["DATA_DIR"] + "y_train.pkl")
-    X_test.to_pickle(args["DATA_DIR"] + "X_test.pkl")
-    y_test.to_pickle(args["DATA_DIR"] + "y_test.pkl")
+    X_train.to_pickle(os.path.join(args["DATA_DIR"], "X_train.pkl"))
+    y_train.to_pickle(os.path.join(args["DATA_DIR"], "y_train.pkl"))
+    X_test.to_pickle(os.path.join(args["DATA_DIR"], "X_test.pkl"))
+    y_test.to_pickle(os.path.join(args["DATA_DIR"], "y_test.pkl"))
 
 
 def load_data(args):
-    X_train = pd.read_pickle(args["DATA_DIR"] + "X_train.pkl")
-    y_train = pd.read_pickle(args["DATA_DIR"] + "y_train.pkl")
-    X_test = pd.read_pickle(args["DATA_DIR"] + "X_test.pkl")
-    y_test = pd.read_pickle(args["DATA_DIR"] + "y_test.pkl")
+    X_train = pd.read_pickle(os.path.join(args["DATA_DIR"], "X_train.pkl"))
+    y_train = pd.read_pickle(os.path.join(args["DATA_DIR"], "y_train.pkl"))
+    X_test = pd.read_pickle(os.path.join(args["DATA_DIR"], "X_test.pkl"))
+    y_test = pd.read_pickle(os.path.join(args["DATA_DIR"], "y_test.pkl"))
     return X_train, y_train, X_test, y_test
 
 
 def train(args, labeled, resume_from, ckpt_file):
     print("Starting training...")
-    if resume_from is None:
-        preprocess_data(args)
     X_train, y_train, X_test, y_test = load_data(args)
+    # convert dataframe to series
+    y_train = y_train.iloc[:,0]
     model = LGBMClassifier(objective="binary", n_jobs=-1)
     if resume_from:
         print("Resuming from previous...")
         resume_from = os.path.join(args["EXPT_DIR"], resume_from)
         model = joblib.load(resume_from)
-    # print(X_train.head)
-    print('size of X_train: ' + str(len(X_train)))
-    df1 = X_train[X_train.isna().any(axis=1)]
-    print(df1)
-    print(labeled)
-    exit()
-    model.fit(X_train.loc[labeled], y_train[labeled])
+    model.fit(X_train.iloc[labeled, :], y_train[labeled])
     ckpt_path = os.path.join(args["EXPT_DIR"], ckpt_file)
     joblib.dump(model, ckpt_path)
     print("Finished Training. Saving the model as {}".format(ckpt_path))
-    return
+    predictions = model.predict(X_train.iloc[labeled, :])
+    labels = y_train[labeled]
+    print('Training accuracy score: ' + str(accuracy_score(y_true=labels, y_pred=predictions)))
+    return {'predictions': predictions, 'labels': labels}
 
 
 def test(args, ckpt_file):
@@ -105,16 +102,13 @@ def test(args, ckpt_file):
     ckpt_path = os.path.join(args["EXPT_DIR"], ckpt_file)
     model = joblib.load(ckpt_path)
     predictions = model.predict(X_test)
-    targets = y_test
+    targets = y_test.iloc[:,0].to_numpy()
     acc_score = accuracy_score(y_true=y_test, y_pred=predictions)
     print()
     print(" Test Classification Report: ")
     print(classification_report(y_true=y_test, y_pred=predictions))
     print()
     print(" Accuracy: " + str(acc_score))
-    # save prediction
-    with open(os.path.join(args["EXPT_DIR"], "prediction.pkl"), "wb") as f:
-        pickle.dump(predictions, f)
     return {"predictions": predictions, "labels": targets}
 
 
@@ -143,6 +137,7 @@ def getdatasetstate(args={}):
 
 
 if __name__ == "__main__":
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", help="Path to config.yaml", required=True)
     args = parser.parse_args()
@@ -151,9 +146,15 @@ if __name__ == "__main__":
         args = yaml.safe_load(stream)
 
     labeled = [int(i) for i in range(500)]
-    unlabeled = [i for i in range(1000, 2000)]
+    unlabeled = [i for i in range(0, 2000)]
     ckpt_file = "ckpt_0"
-    preprocess_data(args)
-    train(args, labeled, None, ckpt_file)
+    #preprocess_data(args)
+    train(args, labeled, 'ckpt_0', ckpt_file)
     test(args, ckpt_file)
     infer(args, unlabeled, ckpt_file)
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", help="Path to config.yaml", required=True)
+    args = parser.parse_args()
+    preprocess_data(args)
+

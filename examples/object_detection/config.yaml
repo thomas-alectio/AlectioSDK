@@ -5,6 +5,7 @@ IMAGEDATA_DIR : "./data/images/"
 TRAINIMAGEDATA_DIR : "./data/images/train"
 TESTIMAGEDATA_DIR : "./data/images/test"
 WEIGHTS_DIR : "./weights"
+CKPT_EXT : '.pkl'
 exp_name: "test"
 onprem: True                             ####### set to True by default unless you give us permissions to view your data and model
 demoname: "coco"                          ####### set to a demo name when on prem is false

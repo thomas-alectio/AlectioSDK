@@ -10,6 +10,8 @@ TESTIMAGEDATA_DIR : "data/imgs/val/"
 TESTLABEL_DIRECTORY : "data/masks/val_masks/"
 WEIGHTS_DIR : "checkpoints/"
 EXP_NAME: "Deepweeds"
+CKPT_EXT : '.pkl'
+
 
 
 

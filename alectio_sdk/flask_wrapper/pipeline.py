@@ -5,6 +5,7 @@ from flask import send_file
 
 import numpy as np
 import json
+import pickle
 import requests
 import traceback
 import sys
@@ -291,7 +292,7 @@ class Pipeline(object):
 
             # check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
             if not os.path.isfile(
-                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}")
+                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}" + args['CKPT_EXT'])
             ):
                 # need to download the checkpoint files from S3
                 self.app.logger.info(
@@ -310,9 +311,9 @@ class Pipeline(object):
 
             self.app.logger.info("Resuming from a checkpoint from a previous loop ")
             # two dag approach needs to refer to the previous checkpoint
-            self.resume_from = "ckpt_{}".format(self.cur_loop - 1)
+            self.resume_from = "ckpt_{}".format(self.cur_loop - 1) + args['CKPT_EXT']
 
-        self.ckpt_file = "ckpt_{}".format(self.cur_loop)
+        self.ckpt_file = "ckpt_{}".format(self.cur_loop) + args['CKPT_EXT']
         self.app.logger.info("Initializing training of your model")
 
         self.train(args)
@@ -571,7 +572,9 @@ class Pipeline(object):
         # write the output to S3
         key = os.path.join(self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop))
         localfile = os.path.join("log", "infer_outputs_{}.pkl".format(self.cur_loop))
-        joblib.dump(remap_outputs, localfile)
+
+        joblib.dump(remap_outputs, localfile, protocol=pickle.HIGHEST_PROTOCOL)
+
         self.client.multi_part_upload_file(localfile, self.bucket_name, key)
         """
         self.client.multi_part_upload_with_s3(

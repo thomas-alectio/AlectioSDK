@@ -6,12 +6,12 @@ class digitClassifier(tf.keras.Model):
         # Define each layer
         super(digitClassifier, self).__init__()
         # Hidden fully connected layer with 256 neurons
-        self.layer1 = tf.layers.Dense(n_hidden_1, activation=tf.nn.relu)
+        self.layer1 = tf.keras.layers.Dense(n_hidden_1, activation=tf.nn.relu)
 
         # Hidden fully connected layer with 256 neurons
-        self.layer2 = tf.layers.Dense(n_hidden_2, activation=tf.nn.relu)
+        self.layer2 = tf.keras.layers.Dense(n_hidden_2, activation=tf.nn.relu)
         # Output fully connected layer with a neuron for each class
-        self.out_layer = tf.layers.Dense(num_classes)
+        self.out_layer = tf.keras.layers.Dense(num_classes)
 
     def call(self, x):
         x = self.layer1(x)

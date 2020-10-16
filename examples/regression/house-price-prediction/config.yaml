@@ -4,6 +4,7 @@ MODEL_DIRECTORY : "./models/"
 DATA_DIR : "./data/"
 LABEL_DIRECTORY : "./data/"
 WEIGHTS_DIR : "./models"
+CKPT_EXT : '.pkl'
 exp_name: "House-price-prediction"
 
 

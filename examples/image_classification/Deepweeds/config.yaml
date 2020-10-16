@@ -4,6 +4,9 @@ IMG_DIRECTORY : "/home/ubuntu/Home/AlectioSDK/examples/image_classification/Deep
 LABEL_DIRECTORY : "/home/ubuntu/Home/AlectioSDK/examples/image_classification/Deepweeds/data/labels/"
 exp_name: "Deepweeds"
 weightsclear: True
+CKPT_EXT : '.pkl'
+
+
 
 ### TRAIN FUNCTION ARGS ###
 batch_size: 8
