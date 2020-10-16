@@ -20,15 +20,15 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 class TextClassificationDataset(torch.utils.data.Dataset):
     """Defines an abstract text classification datasets.
-       Currently, we only support the following datasets:
-             - AG_NEWS
-             - SogouNews
-             - DBpedia
-             - YelpReviewPolarity
-             - YelpReviewFull
-             - YahooAnswers
-             - AmazonReviewPolarity
-             - AmazonReviewFull
+    Currently, we only support the following datasets:
+          - AG_NEWS
+          - SogouNews
+          - DBpedia
+          - YelpReviewPolarity
+          - YelpReviewFull
+          - YahooAnswers
+          - AmazonReviewPolarity
+          - AmazonReviewFull
     """
 
     def __init__(self, vocab, data, labels):
@@ -137,7 +137,7 @@ def _setup_datasets(
 
 
 def AG_NEWS(*args, **kwargs):
-    """ Defines AG_NEWS datasets.
+    """Defines AG_NEWS datasets.
         The labels includes:
             - 0 : World
             - 1 : Sports

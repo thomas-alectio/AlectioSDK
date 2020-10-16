@@ -122,6 +122,7 @@ class Pipeline(object):
             train_times (list): training_times noted down so far
             n_loop (int): total number of loops
         """
+
         def convert(seconds):
             seconds = seconds % (24 * 3600)
             hour = seconds // 3600
@@ -133,7 +134,9 @@ class Pipeline(object):
 
         loops_completed = self.cur_loop + 1
         time_left = convert(last_time * (self.n_loop - loops_completed))
-        self.app.logger.info("Estimated time left for the experiment: {}".format(time_left))
+        self.app.logger.info(
+            "Estimated time left for the experiment: {}".format(time_left)
+        )
         return time_left
 
     def one_loop(self):
@@ -149,8 +152,8 @@ class Pipeline(object):
             "bucket_name": request.get_json()["bucket_name"],
             "type": request.get_json()["type"],
             "n_rec": request.get_json()["n_rec"],
-            "n_loop": request.get_json()["n_loop"]
-            }
+            "n_loop": request.get_json()["n_loop"],
+        }
         self.logdir = payload["experiment_id"]
         self._checkdirs(self.logdir)
         self.args["LOG_DIR"] = self.logdir
@@ -169,7 +172,8 @@ class Pipeline(object):
 
         headers = {"Authorization": "Bearer " + self.client_token}
         status = requests.post(
-            url=url, json=returned_payload, headers=headers).status_code
+            url=url, json=returned_payload, headers=headers
+        ).status_code
         if status == 200:
             self.app.logger.info(
                 "Experiment {} running".format(payload["experiment_id"])
@@ -355,22 +359,25 @@ class Pipeline(object):
         self.labeled.sort()  # Maintain increasing order
 
         train_op = self.train_fn(
-                                args,
-                                labeled=deepcopy(self.labeled),
-                                resume_from=self.resume_from,
-                                ckpt_file=self.ckpt_file,
-                                )
+            args,
+            labeled=deepcopy(self.labeled),
+            resume_from=self.resume_from,
+            ckpt_file=self.ckpt_file,
+        )
 
         if train_op is not None:
             labels = train_op["labels"]
             unique, counts = np.unique(labels, return_counts=True)
-            num_queried_per_class = {u:c for u, c in zip(unique, counts)}
+            num_queried_per_class = {u: c for u, c in zip(unique, counts)}
 
         end = time.time()
 
         # @TODO compute insights from labels
         if train_op is not None:
-            insights = {"train_time": end - start,"num_queried_per_class": num_queried_per_class}
+            insights = {
+                "train_time": end - start,
+                "num_queried_per_class": num_queried_per_class,
+            }
         else:
             insights = {"train_time": end - start}
 

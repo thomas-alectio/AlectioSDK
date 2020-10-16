@@ -49,7 +49,14 @@ def preprocess(trainDF, testDF):
     for i in skew_index:
         features[i] = boxcox1p(features[i], boxcox_normmax(features[i] + 1))
 
-    features = features.drop(["Utilities", "Street", "PoolQC",], axis=1)
+    features = features.drop(
+        [
+            "Utilities",
+            "Street",
+            "PoolQC",
+        ],
+        axis=1,
+    )
 
     features["YrBltAndRemod"] = features["YearBuilt"] + features["YearRemodAdd"]
     features["TotalSF"] = (

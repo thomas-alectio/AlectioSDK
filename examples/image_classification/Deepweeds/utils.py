@@ -6,6 +6,7 @@ Created on Fri Jun 12 19:59:21 2020
 """
 import numpy as np
 
+
 def crop(img, size):
     """
     Crop the image concentrically to the desired size.

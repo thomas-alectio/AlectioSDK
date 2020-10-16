@@ -55,7 +55,7 @@ class S3Client:
         )
 
     def read(self, bucket_name, object_key, file_format):
-        """ Read a file from the S3 bucket containing
+        """Read a file from the S3 bucket containing
         this experiment
 
         object_key: str.
@@ -107,7 +107,11 @@ class S3Client:
         # @TODO add md5 hash
         # @TODO return success or failure message
         # put in S3
-        r = self.client.put_object(Bucket=bucket_name, Key=object_key, Body=bytestr,)
+        r = self.client.put_object(
+            Bucket=bucket_name,
+            Key=object_key,
+            Body=bytestr,
+        )
 
         return
 
@@ -161,7 +165,9 @@ class S3Client:
 
         return
 
-    def download_checkpoints(self, bucket_name, project_id, experiment_id, cur_loop, log_dir):
+    def download_checkpoints(
+        self, bucket_name, project_id, experiment_id, cur_loop, log_dir
+    ):
         checkpoints_to_download = list(range(cur_loop))
 
         for checkpoint in checkpoints_to_download:

@@ -1,11 +1,13 @@
 import setuptools
 
+
 def parse_requirements(filename):
     """ load requirements from a pip requirements file """
     lineiter = (line.strip() for line in open(filename))
     return [line for line in lineiter if line and not line.startswith("#")]
 
-install_reqs = parse_requirements('./requirements.txt')
+
+install_reqs = parse_requirements("./requirements.txt")
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
