@@ -41,7 +41,7 @@ class Pipeline(object):
 
     """
 
-    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args):
+    def __init__(self, name, train_fn, test_fn, infer_fn, getstate_fn, args, token):
         """
         sentry_sdk.init(
             dsn="https://4eedcc29fa7844828397dca4afc2db32@o409542.ingest.sentry.io/5282336",
@@ -57,11 +57,12 @@ class Pipeline(object):
         self.infer_fn = infer_fn
         self.getstate_fn = getstate_fn
         self.args = args
-        self.client = S3Client()  # boto3.client('s3') #
-
+        self.client = S3Client()
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
+
+        self.client_token = token
         # self._notifyserverstatus()
         if "onprem" in self.args and not self.args["onprem"]:
             self.demopayload = self._setdemovars(self.args["demoname"])
@@ -119,6 +120,7 @@ class Pipeline(object):
             train_times (list): training_times noted down so far
             n_loop (int): total number of loops
         """
+
         def convert(seconds):
             seconds = seconds % (24 * 3600)
             hour = seconds // 3600
@@ -130,7 +132,9 @@ class Pipeline(object):
 
         loops_completed = self.cur_loop + 1
         time_left = convert(last_time * (self.n_loop - loops_completed))
-        self.app.logger.info("Estimated time left for the experiment: {}".format(time_left))
+        self.app.logger.info(
+            "Estimated time left for the experiment: {}".format(time_left)
+        )
         return time_left
 
     def one_loop(self):
@@ -146,8 +150,8 @@ class Pipeline(object):
             "bucket_name": request.get_json()["bucket_name"],
             "type": request.get_json()["type"],
             "n_rec": request.get_json()["n_rec"],
-            "n_loop": request.get_json()["n_loop"]
-            }
+            "n_loop": request.get_json()["n_loop"],
+        }
         self.logdir = payload["experiment_id"]
         self._checkdirs(self.logdir)
         self.args["LOG_DIR"] = self.logdir
@@ -160,15 +164,14 @@ class Pipeline(object):
         self.app.logger.info(
             "Your results for this loop should be visible in Alectio website shortly"
         )
-        print(returned_payload)
         backend_ip = self.config["backend_ip"]
         port = 80
         url = "".join(["http://", backend_ip, ":{}".format(port), "/end_of_task"])
-        print("Url for backend ", url)
+
+        headers = {"Authorization": "Bearer " + self.client_token}
         status = requests.post(
-            url=url, json=returned_payload, auth=("auth", os.environ["ALECTIO_API_KEY"])
+            url=url, json=returned_payload, headers=headers
         ).status_code
-        print("status =", status)
         if status == 200:
             self.app.logger.info(
                 "Experiment {} running".format(payload["experiment_id"])
@@ -354,22 +357,25 @@ class Pipeline(object):
         self.labeled.sort()  # Maintain increasing order
 
         train_op = self.train_fn(
-                                args,
-                                labeled=deepcopy(self.labeled),
-                                resume_from=self.resume_from,
-                                ckpt_file=self.ckpt_file,
-                                )
+            args,
+            labeled=deepcopy(self.labeled),
+            resume_from=self.resume_from,
+            ckpt_file=self.ckpt_file,
+        )
 
         if train_op is not None:
             labels = train_op["labels"]
             unique, counts = np.unique(labels, return_counts=True)
-            num_queried_per_class = {u:c for u, c in zip(unique, counts)}
+            num_queried_per_class = {u: c for u, c in zip(unique, counts)}
 
         end = time.time()
 
         # @TODO compute insights from labels
         if train_op is not None:
-            insights = {"train_time": end - start,"num_queried_per_class": num_queried_per_class}
+            insights = {
+                "train_time": end - start,
+                "num_queried_per_class": num_queried_per_class,
+            }
         else:
             insights = {"train_time": end - start}
 
@@ -557,6 +563,7 @@ class Pipeline(object):
 
         # Remap to absolute indices
         remap_outputs = {}
+
         for i, (k, v) in enumerate(outputs.items()):
             ix = self.unlabeled.pop(0)
             remap_outputs[ix] = v

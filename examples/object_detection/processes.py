@@ -57,7 +57,8 @@ def train(args, labeled, resume_from, ckpt_file):
     backbone_freeze = 1
     checkpointsaveinterval = args["checkpointsaveinterval"]
     datamap = getdatasetstate(
-        args, split="train",
+        args,
+        split="train",
     )  ##### Since our dataset object accepts list of imagenames we are using the state function again
     imglist = [v for k, v in datamap.items() if k in labeled]
     trainDataset = ListDataset(imglist)

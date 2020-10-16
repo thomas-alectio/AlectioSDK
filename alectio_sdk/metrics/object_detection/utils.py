@@ -17,7 +17,7 @@ def compute_iou(detBoxes, GTBoxes):
             (N, 4) shaped array with detected bboxes
         GTBoxes : ndarray
             (M, 4) shaped array with Ground truth bboxes
-        Returns: 
+        Returns:
             (N, M) shaped numpy array with IoUs
     """
     area = (GTBoxes[:, 2] - GTBoxes[:, 0]) * (GTBoxes[:, 3] - GTBoxes[:, 1])
@@ -49,7 +49,7 @@ def compute_iou(detBoxes, GTBoxes):
 
 
 def compute_ap(recall, precision):
-    """ 
+    """
     Description:
         Compute the average precision, given the recall and precision curves.
     Arguments:

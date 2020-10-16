@@ -11,6 +11,7 @@ AlectioPipeline = Pipeline(
     test_fn=test,
     infer_fn=infer,
     getstate_fn=getdatasetstate,
+    token="hPrjnEpRi0jLikGNNU8lIiCulCbdHAMJeIcBOc2XB4",
 )
 
 app = AlectioPipeline.app

@@ -4,6 +4,7 @@ Created on Fri Jun 12 19:59:21 2020
 
 @author: arun
 """
+import numpy as np
 
 
 def crop(img, size):
