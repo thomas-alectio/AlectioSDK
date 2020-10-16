@@ -51,7 +51,7 @@ def train(args, labeled, resume_from, ckpt_file):
     criterion = nn.CrossEntropyLoss().to(device)
     optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum, weight_decay=wtd)
 
-    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[80, 100, 125], last_epoch=- 1)
+    lr_scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[60, 90, 95], last_epoch=- 1)
 
     if resume_from is not None and not args["weightsclear"]:
         ckpt = torch.load(os.path.join(args["EXPT_DIR"], resume_from))
@@ -78,14 +78,13 @@ def train(args, labeled, resume_from, ckpt_file):
             optimizer.step()
 
             running_loss += loss.item()
+        lr_scheduler.step()
 
     print("Finished Training. Saving the model as {}".format(ckpt_file))
     ckpt = {"model": net.state_dict(), "optimizer": optimizer.state_dict()}
     torch.save(ckpt, os.path.join(args["EXPT_DIR"], ckpt_file))
-    lr_scheduler.step()
 
     return {"predictions": predictions, "labels": targets}
-
 
 def test(args, ckpt_file):
     batch_size = 16

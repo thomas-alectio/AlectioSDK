@@ -57,13 +57,13 @@ class S3Client:
     def read(self, bucket_name, object_key, file_format):
         """ Read a file from the S3 bucket containing
         this experiment
-    
+
         object_key: str.
            object key for this file
-           
+
         file_format: str.
             format of the file {"pickle", "json"}
-        
+
         """
 
         s3_object = self.client.get_object(Bucket=bucket_name, Key=object_key)
@@ -82,16 +82,16 @@ class S3Client:
     def write(self, obj, bucket_name, object_key, file_format):
         """Write an object to S3 bucket
         Mostly used for writing ExperimentData.pkl
-        InferenceData.pkl files 
-        
+        InferenceData.pkl files
+
         obj: dict | list | string
-        
+
         bucket_name: name of the s3 bucket
         object_key: str.
             object key in the S3 bucket
-            
+
         file_format: str.
-            format of the file to save the object 
+            format of the file to save the object
             {pickle, json}
 
         """
@@ -168,6 +168,6 @@ class S3Client:
             print(f"downloading file ckpt_{checkpoint}.pth")
             self.client.download_file(
                 f"{bucket_name}",
-                f"{project_id}/{experiment_id}/ckpt_{checkpoint}.pth",
-                f"{log_dir}/ckpt_{checkpoint}.pth",
+                f"{project_id}/{experiment_id}/ckpt_{checkpoint}",
+                f"{log_dir}/ckpt_{checkpoint}",
             )
