@@ -5,7 +5,6 @@ from flask import send_file
 
 import numpy as np
 import json
-import pickle
 import requests
 import traceback
 import sys
@@ -59,6 +58,10 @@ class Pipeline(object):
         self.getstate_fn = getstate_fn
         self.args = args
         self.client = S3Client()
+        self.ckpt_ext = args.get('CKPT_EXT')
+        if self.ckpt_ext is None:
+            self.ckpt_ext = '.pkl'
+            raise Warning('CKPT_EXT is empty in config.yaml, please set it to something i.e. .pkl')
         dir_path = os.path.dirname(os.path.realpath(__file__))
         with open(os.path.join(dir_path, "config.json"), "r") as f:
             self.config = json.load(f)
@@ -66,9 +69,9 @@ class Pipeline(object):
         self.client_token = token
         # self._notifyserverstatus()
         if "onprem" in self.args and not self.args["onprem"]:
-            self.demopayload = self._setdemovars(self.args["demoname"])
+            self.demo_payload = self._setdemovars(self.args["demoname"])
         else:
-            self.demopayload = {
+            self.demo_payload = {
                 "project_id": "",
                 "user_id": "",
                 "experiment_id": "",
@@ -104,14 +107,14 @@ class Pipeline(object):
 
     def _setdemovars(self, demo="coco"):
         if demo == "coco":
-            demopayload = {
+            demo_payload = {
                 "project_id": "5e1ec656aa8e11ea8c639afd8b723gds",
                 "user_id": "adc12714bb3a11eab6053af9d318993f",
                 "experiment_id": "e0a6d7d29e2611ea97c23af9d3189111102",
                 "bucket_name": "alectio-company-demos",
                 "type": "Object Detection",
             }
-            return demopayload
+            return demo_payload
 
     def _estimate_exp_time(self, last_time):
         """
@@ -231,15 +234,15 @@ class Pipeline(object):
             self.project_dir = os.path.join(payload["project_id"])
 
         if (
-            self.demopayload["bucket_name"] == "alectio-company-demos"
+            self.demo_payload["bucket_name"] == "alectio-company-demos"
         ):  ####### Future Front end optimzation needed to avoid double writing
-            self.demoexpt_dir = os.path.join(
+            self.demo_expt_dir = os.path.join(
                 self.args["demoname"],
-                self.demopayload["project_id"],
-                self.demopayload["experiment_id"],
+                self.demo_payload["project_id"],
+                self.demo_payload["experiment_id"],
             )
 
-            self.demoproject_dir = os.path.join(self.demopayload["project_id"])
+            self.demo_project_dir = os.path.join(self.demo_payload["project_id"])
 
         self.app.logger.info("Essential experiment params have been extracted")
         # get meta-data of the data set
@@ -271,20 +274,20 @@ class Pipeline(object):
                 self.state_json, self.bucket_name, object_key, "pickle"
             )
             if "onprem" in self.args and not self.args["onprem"]:
-                demoobject_key = os.path.join(self.demoexpt_dir, "data_map.pkl")
-                demometaobject_key = os.path.join(
-                    os.path.dirname(self.demoexpt_dir), "meta.json"
+                demo_object_key = os.path.join(self.demo_expt_dir, "data_map.pkl")
+                demo_meta_object_key = os.path.join(
+                    os.path.dirname(self.demo_expt_dir), "meta.json"
                 )
                 self.client.multi_part_upload_with_s3(
                     self.state_json,
-                    self.demopayload["bucket_name"],
-                    demoobject_key,
+                    self.demo_payload["bucket_name"],
+                    demo_object_key,
                     "pickle",
                 )
                 self.client.multi_part_upload_with_s3(
                     self.meta_data,
-                    self.demopayload["bucket_name"],
-                    demometaobject_key,
+                    self.demo_payload["bucket_name"],
+                    demo_meta_object_key,
                     "json",
                 )
             self.app.logger.info("Reference creation complete")
@@ -292,7 +295,7 @@ class Pipeline(object):
 
             # check if ckpt cur_loop - 1 exists, otherwise we need to download it from S3
             if not os.path.isfile(
-                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}" + args['CKPT_EXT'])
+                os.path.join(self.args["EXPT_DIR"], f"ckpt_{self.cur_loop-1}" + self.ckpt_ext)
             ):
                 # need to download the checkpoint files from S3
                 self.app.logger.info(
@@ -311,9 +314,9 @@ class Pipeline(object):
 
             self.app.logger.info("Resuming from a checkpoint from a previous loop ")
             # two dag approach needs to refer to the previous checkpoint
-            self.resume_from = "ckpt_{}".format(self.cur_loop - 1) + args['CKPT_EXT']
+            self.resume_from = "ckpt_{}".format(self.cur_loop - 1) + self.ckpt_ext
 
-        self.ckpt_file = "ckpt_{}".format(self.cur_loop) + args['CKPT_EXT']
+        self.ckpt_file = "ckpt_{}".format(self.cur_loop) + self.ckpt_ext
         self.app.logger.info("Initializing training of your model")
 
         self.train(args)
@@ -389,21 +392,21 @@ class Pipeline(object):
             insights, self.bucket_name, object_key, "pickle"
         )
         if "onprem" in self.args and not self.args["onprem"]:
-            demoinsightsobject_key = os.path.join(
-                self.demoexpt_dir, "insights_{}.pkl".format(self.cur_loop)
+            demo_insights_object_key = os.path.join(
+                self.demo_expt_dir, "insights_{}.pkl".format(self.cur_loop)
             )
             self.client.multi_part_upload_with_s3(
                 insights,
-                self.demopayload["bucket_name"],
-                demoinsightsobject_key,
+                self.demo_payload["bucket_name"],
+                demo_insights_object_key,
                 "pickle",
             )
-            democheckpointsobject_key = os.path.join(self.demoexpt_dir, self.ckpt_file)
-            loopcheckpointfile = os.path.join(self.args["LOG_DIR"], self.ckpt_file)
+            demo_ckpt_object_key = os.path.join(self.demo_expt_dir, self.ckpt_file)
+            loop_ckpt_file = os.path.join(self.args["LOG_DIR"], self.ckpt_file)
             self.client.multi_part_upload_file(
-                loopcheckpointfile,
-                self.demopayload["bucket_name"],
-                democheckpointsobject_key,
+                loop_ckpt_file,
+                self.demo_payload["bucket_name"],
+                demo_ckpt_object_key,
             )
 
         return
@@ -431,13 +434,13 @@ class Pipeline(object):
         )
 
         if "onprem" in self.args and not self.args["onprem"]:
-            demopredsobject_key = os.path.join(
-                self.demoexpt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
+            demo_preds_object_key = os.path.join(
+                self.demo_expt_dir, "test_predictions_{}.pkl".format(self.cur_loop)
             )
             self.client.multi_part_upload_with_s3(
                 predictions,
-                self.demopayload["bucket_name"],
-                demopredsobject_key,
+                self.demo_payload["bucket_name"],
+                demo_preds_object_key,
                 "pickle",
             )
 
@@ -450,13 +453,13 @@ class Pipeline(object):
                 ground_truth, self.bucket_name, object_key, "pickle"
             )
             if "onprem" in self.args and not self.args["onprem"]:
-                demogtsobject_key = os.path.join(
-                    self.demoexpt_dir, "test_ground_truth.pkl"
+                demo_gt_object_key = os.path.join(
+                    self.demo_expt_dir, "test_ground_truth.pkl"
                 )
                 self.client.multi_part_upload_with_s3(
                     ground_truth,
-                    self.demopayload["bucket_name"],
-                    demogtsobject_key,
+                    self.demo_payload["bucket_name"],
+                    demo_gt_object_key,
                     "pickle",
                 )
 
@@ -528,11 +531,11 @@ class Pipeline(object):
         )
         if "onprem" in self.args and not self.args["onprem"]:
             demometricsobject_key = os.path.join(
-                self.demoexpt_dir, "metrics_{}.pkl".format(self.cur_loop)
+                self.demo_expt_dir, "metrics_{}.pkl".format(self.cur_loop)
             )
             self.client.multi_part_upload_with_s3(
                 metrics,
-                self.demopayload["bucket_name"],
+                self.demo_payload["bucket_name"],
                 demometricsobject_key,
                 "pickle",
             )
@@ -572,9 +575,7 @@ class Pipeline(object):
         # write the output to S3
         key = os.path.join(self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop))
         localfile = os.path.join("log", "infer_outputs_{}.pkl".format(self.cur_loop))
-
-        joblib.dump(remap_outputs, localfile, protocol=pickle.HIGHEST_PROTOCOL)
-
+        joblib.dump(remap_outputs, localfile)
         self.client.multi_part_upload_file(localfile, self.bucket_name, key)
         """
         self.client.multi_part_upload_with_s3(
@@ -584,18 +585,18 @@ class Pipeline(object):
 
         if "onprem" in self.args and not self.args["onprem"]:
             demoinferobject_key = os.path.join(
-                self.demoexpt_dir, "infer_outputs_{}.pkl".format(self.cur_loop)
+                self.demo_expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop)
             )
             """
             self.client.multi_part_upload_with_s3(
                 remap_outputs,
-                self.demopayload["bucket_name"],
+                self.demo_payload["bucket_name"],
                 demoinferobject_key,
                 "pickle",
             )
             """
             self.client.multi_part_upload_file(
-                localfile, self.demopayload["bucket_name"], demoinferobject_key
+                localfile, self.demo_payload["bucket_name"], demoinferobject_key
             )
         return
 
