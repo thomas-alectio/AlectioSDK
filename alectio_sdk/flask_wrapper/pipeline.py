@@ -558,6 +558,7 @@ class Pipeline(object):
 
         # Remap to absolute indices
         remap_outputs = {}
+
         for i, (k, v) in enumerate(outputs.items()):
             ix = self.unlabeled.pop(0)
             remap_outputs[ix] = v
