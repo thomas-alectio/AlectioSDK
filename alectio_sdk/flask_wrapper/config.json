@@ -1,5 +1,5 @@
 {
   "sandbox_bucket": "",
-  "backend_ip": "sdk.api.alectio.com",
+  "backend_ip": "http://sdk.api.alectio.com",
   "backend_route": "127.0.0.1:5000/end_of_task"
 }
