@@ -1,12 +1,20 @@
 sample_payload: 'sample_payload.json'
-EXPT_DIR : "./log"
+EXPT_DIR : "./COCOexperiment"             ####### Will contain all experiment related checkpoints and other logs
 DATA_DIR : "./data"
 IMAGEDATA_DIR : "./data/images/"
 TRAINIMAGEDATA_DIR : "./data/images/train"
 TESTIMAGEDATA_DIR : "./data/images/test"
 WEIGHTS_DIR : "./weights"
 exp_name: "test"
+onprem: True                             ####### set to True by default unless you give us permissions to view your data and model
+demoname: "coco"                          ####### set to a demo name when on prem is false
+weightsclear: True
 
-### TRAIN FUNCTION ARGS ###
-train_epochs: 5
-batch_size: 8
+### TRAIN PARAMS ###
+train_epochs: 80
+batch_size: 16
+lr: 1e-2
+weight_decay: 1e-2
+accumulated_batches: 4
+best_mAP: 0.0
+checkpointsaveinterval: 5

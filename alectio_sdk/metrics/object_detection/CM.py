@@ -10,14 +10,14 @@ from .imports import *
 
 class CM(object):
     r"""
-    Confusion Matix skeleton that carries out basic confusion matrix operations 
+    Confusion Matix skeleton that carries out basic confusion matrix operations
     to obtain final confusion matrix
-    
+
     Args:
-        nClasses: number of classes 
+        nClasses: number of classes
         labels: target labels
-        task: specifies the target task (Object Detection/ Classification) 
-    
+        task: specifies the target task (Object Detection/ Classification)
+
     """
 
     def __init__(self, nClasses, labels=None, task="OD"):
@@ -39,7 +39,7 @@ class CM(object):
         Function updates true positives, false positives and False negatives
         Arguments:
             Update vals - Zip containing tp,fp,fn values and indices
-    
+
         """
         for ix, val in updatevals:
             self.CM[ix[0], ix[1]] = val
@@ -55,7 +55,7 @@ class CM(object):
     def save_CM(self, outdir, modelname):
         r"""
         Fucntion saves Confusion matrix in target folder
-        
+
         """
         df_cm = pd.DataFrame(self.CM, index=self.labels, columns=self.labels)
         df_cm.to_csv(

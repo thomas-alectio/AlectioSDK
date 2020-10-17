@@ -17,7 +17,8 @@ app = Pipeline(
     test_fn=test,
     infer_fn=infer,
     getstate_fn=getdatasetstate,
-    args=args
+    args=args,
+    token="hPrjnEpRi0jLikGNNU8lIiCulCbdHAMJeIcBOc2XB4",
 )
 
 if __name__ == "__main__":

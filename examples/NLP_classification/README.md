@@ -22,6 +22,9 @@ To install the AlectioSDK from within the current directory (`./examples/NLP_cla
 ```
 pip install ../../.
 ```
+
+Next, go to the Alectio Frontend and download the API key by hitting the `DOWNLOAD API KEY` button. This will download a file called `credentials.json` which you should place in the current working directory (`./examples/NLP_classification`).
+
 ### 2. Get Code, Data and Dependencies 
 
 First, point your terminal to the directory of this Readme file. Your terminal should look like this:
@@ -32,7 +35,7 @@ Then, clone the `SDK_Reuters` branch of the topic classification repo.
 ```shell
 git clone --depth 1 -b SDK_Reuters --single-branch git@gitlab.com:AntonMu/reuters_hedwig.git
 ```
-If succesfull, you should have a folder within your SDK repo called `reuters_hedwig`. It should look like this:
+If successful, you should have a folder within your SDK repo called `reuters_hedwig`. It should look like this:
 
 ```
 ├── examples
@@ -69,5 +72,5 @@ python processes.py
 Finally, to run the flask app, execute:
 
 ```
-python main.py
+gunicorn --bind 0.0.0.0:5000 --timeout 2500000 main:app
 ```

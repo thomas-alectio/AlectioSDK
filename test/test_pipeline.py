@@ -16,7 +16,12 @@ def test_obj_detect_pipeline():
             0: {"boxes": [[0.1, 0.2, 0.3, 0.4]], "objects": [1], "scores": [0.7]}
         }
 
-        lbs = {0: {"boxes": [0.2, 0.3, 0.4, 0.5], "objects": [1],}}
+        lbs = {
+            0: {
+                "boxes": [0.2, 0.3, 0.4, 0.5],
+                "objects": [1],
+            }
+        }
 
         return {"predictions": predictions, "labels": lbs}
 

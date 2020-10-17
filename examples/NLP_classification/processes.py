@@ -15,7 +15,7 @@ from reuters_hedwig.models.bert import __main__
 from models.bert.args import get_args
 
 
-def getdatasetstate(config_args={}):  # Why is args empty here?
+def getdatasetstate(config_args={}):
     return {k: k for k in range(config_args["trainsize"])}
 
 
@@ -63,7 +63,7 @@ def infer(config_args, unlabeled, ckpt_file):
     d = dict(zip(range(args.trainsize), scores))
     outputs = {}
     for l in unlabeled:
-        outputs[l] = d[l]
+        outputs[l] = {"softmax": d[l]}
 
     return {"outputs": outputs}
 
@@ -89,4 +89,4 @@ if __name__ == "__main__":
     print("Running Testing")
     test(args, ckpt_file=ckpt_file)
     print("Running Inference")
-    infer(args, unlabeled=[10, 20, 30], ckpt_file=ckpt_file)
+    print(infer(args, unlabeled=[10, 20, 30], ckpt_file=ckpt_file))
