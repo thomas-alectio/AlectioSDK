@@ -1,3 +1,11 @@
+# Requirements
+* Python3
+* PIP3
+* Ubuntu 16.04+ / MacOS / Windows 10
+* GCC / C++ (Will depend on OS you are using. Ubuntu, MacOS it comes default. Some falvours of linux distribution like Amazon Linux/RED Hat linux might not have GCC or C++ realted libraires installed)
+
+For this tutorial, we are assuming you are using Python3 and PIP3. Also, make sure you have the necessary build tools installed (might vary from OS to OS). If you get any errors while installing any dependent packages feel free to reach out to us but most of it can quickly be solved by a simple Google search.  
+
 # Alectio SDK
 
 AlectioSDK is a package that enables developers to build an ML pipeline as a Flask app to interact with Alectio's
