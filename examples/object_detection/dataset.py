@@ -13,19 +13,19 @@ import numpy as np
 
 class COCO(Dataset):
     """COCO dataset from Darknet format
-    
+
     Bounding boxes are in xyxy format
-    
+
     Paramters:
     ----------
     root: root directory to the dataset
-    
+
     transform: callable
         tranform applied to both raw PIL label and list of bbox in xyxy format
-    
+
     train: bool. Default True
         use for training
-    
+
     """
 
     def __init__(self, root, transform=None, samples=None, train=True):

@@ -133,7 +133,8 @@ def test(config_args, ckpt_file):
     )
 
     pred_output_test_file = os.path.join(
-        output_dir, f"test_pred_results_{task_name.lower()}.pkl",
+        output_dir,
+        f"test_pred_results_{task_name.lower()}.pkl",
     )
 
     subprocess.call(call_string, shell=True)
@@ -169,7 +170,8 @@ def infer(config_args, unlabeled, ckpt_file):
     )
 
     output_test_file = os.path.join(
-        output_dir, f"raw_test_results_{task_name.lower()}.pkl",
+        output_dir,
+        f"raw_test_results_{task_name.lower()}.pkl",
     )
 
     subprocess.call(call_string, shell=True)

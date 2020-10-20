@@ -67,7 +67,7 @@ arguments of this process.
 Finally, to run the flask app, execute:
 
 ```
-python main.py --config config.yaml
+gunicorn --bind 0.0.0.0:5000 --timeout 2500000 main:app
 ```
 
 #### Return of the Infer Process
