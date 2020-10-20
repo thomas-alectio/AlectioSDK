@@ -489,7 +489,7 @@ class Pipeline(object):
                 "class_labels": self.meta_data["class_labels"],
             }
 
-        if self.type == "Classification" or self.type == "Text Classification":
+        elif self.type == "Classification" or self.type == "Text Classification" or self.type == "Image Classification":
             confusion_matrix = sklearn.metrics.confusion_matrix(
                 ground_truth, predictions
             )
@@ -521,6 +521,9 @@ class Pipeline(object):
                 "acc_per_class": acc_per_class,
                 "label_disagreement": label_disagreement,
             }
+
+        else:
+            raise ValueError("Metrics for problem type: {} are not supported yet.".format(self.type))
 
         # save metrics to S3
         object_key = os.path.join(self.expt_dir, "metrics_{}.pkl".format(self.cur_loop))
