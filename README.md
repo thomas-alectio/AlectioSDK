@@ -1,6 +1,6 @@
 # Requirements
-* Python3
-* PIP3
+* Python3 (Required)
+* PIP3    (Required)
 * Ubuntu 16.04+ / MacOS / Windows 10
 * GCC / C++ (Will depend on OS you are using. Ubuntu, MacOS it comes default. Some falvours of linux distribution like Amazon Linux/RED Hat linux might not have GCC or C++ realted libraires installed)
 
