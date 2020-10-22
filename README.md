@@ -1,3 +1,11 @@
+# Requirements
+* Python3 (Required)
+* PIP3    (Required)
+* Ubuntu 16.04+ / MacOS / Windows 10
+* GCC / C++ (Will depend on OS you are using. Ubuntu, MacOS it comes default. Some falvours of linux distribution like Amazon Linux/RED Hat linux might not have GCC or C++ realted libraires installed)
+
+For this tutorial, we are assuming you are using Python3 and PIP3. Also, make sure you have the necessary build tools installed (might vary from OS to OS). If you get any errors while installing any dependent packages feel free to reach out to us but most of it can quickly be solved by a simple Google search.  
+
 # Alectio SDK
 
 AlectioSDK is a package that enables developers to build an ML pipeline as a Flask app to interact with Alectio's
@@ -119,12 +127,20 @@ For more details about the format of the output, please refer to the [examples](
 
 ## Installation
 ### 0. Key Management
-Install the Alectio Key Mangement Package first by using:
+
+If you have not already created your Client ID and Client Secret then do so by visiting:
+1. open https://auth.alectio.com
+2. Login there and click 'Create Client' Link, only change Name in the form and leave everything as it is
+3. Click submit
+4. Now you should have you Client ID and Client Secret
+You will use them in the terminal where you are running alectio-kms
+
+Install the Alectio Key Mangement Package by using:
 ```console
 sudo pip install alectio-kms
 ```
 
-During installation of alectio-kms make sure that the pip binary is also accessible for sudo/root user. That is use pip outside any of your virtual environment.
+During installation of alectio-kms make sure that the pip binary is also accessible for sudo/root user. That is use pip outside any of your virtual environment and pip binary is of python3 NOT python2.
 
 Once the package is installed run:
 ```console
@@ -132,15 +148,11 @@ sudo alectio-kms
 ```
 
 Upon running the package it will walk you through to get you keys setup
-If you have not already created your Client ID and Client Secret then do so by visiting:
-1. open https://auth.alectio.com
-2. Login there and click 'Create Client' Link, only change Name in the form and leave everything as is
-3. Click submit
-4. Now you should have you Client ID and Client Secret
-You will use them in the terminal where you are running alectio-kms
-After you have entered your Client ID and Client Secret, it will open a web browser where you will authenticate yourself.
+If you are running it for first time then it will ask you to enter your Client ID and Client Secret, it will open a web browser where you will authenticate yourself.
 Upon successful authentication your Client ID, Client Secret and Auth Token will be save at /opt/alectio and will
 also be outputted in your terminal. 
+
+KMS will open the default browser (Most likely one that came default with your OS). Please make sure that you are already signed in with that browser otherwise, you will need to copy and paster the token retrieval URL from the terminal.
 
 ### 1. Set up a virtual environment
 We recommend to set-up a virtual environment.
