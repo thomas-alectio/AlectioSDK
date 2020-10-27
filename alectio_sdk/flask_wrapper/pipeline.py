@@ -582,9 +582,9 @@ class Pipeline(object):
         # write the output to S3
         key = os.path.join(self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop))
         localfile = os.path.join("log", "infer_outputs_{}.pkl".format(self.cur_loop))
-        # joblib.dump(remap_outputs, localfile)
-        with open(localfile, 'wb') as handle:
-            pickle.dump(remap_outputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        joblib.dump(remap_outputs, localfile)
+        # with open(localfile, 'wb') as handle:
+        #    pickle.dump(remap_outputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         self.client.multi_part_upload_file(localfile, self.bucket_name, key)
         """
