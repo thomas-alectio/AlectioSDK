@@ -492,6 +492,7 @@ class Pipeline(object):
                 "confusion_matrix": m.getCM().tolist(),
                 "class_labels": self.meta_data["class_labels"],
             }
+
         elif self.type == "Classification" or self.type == "Text Classification" or self.type == "Image Classification":
             confusion_matrix = sklearn.metrics.confusion_matrix(
                 ground_truth, predictions
@@ -508,8 +509,11 @@ class Pipeline(object):
             TP = confusion_matrix.diagonal()
             TN = confusion_matrix.sum() - (FP + FN + TP)
             precision = TP / (TP + FP)
+            precision[np.isnan(precision)] = 0
             recall = TP / (TP + FN)
+            recall[np.isnan(recall)] = 0
             f1_score = 2 * precision * recall / (precision + recall)
+            f1_score[np.isnan(f1_score)] = 0
             label_disagreement = {k: v.round(3) for k, v in enumerate(FP / (FP + TN))}
 
             metrics = {
