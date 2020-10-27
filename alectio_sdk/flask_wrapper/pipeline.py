@@ -8,6 +8,7 @@ import json
 import requests
 import traceback
 import sys
+import pickle
 import os
 import psutil
 import time
@@ -307,6 +308,7 @@ class Pipeline(object):
                     payload["experiment_id"],
                     payload["cur_loop"],
                     self.args["EXPT_DIR"],
+                    self.args['CKPT_EXT']
                 )
                 self.app.logger.info(
                     "Finished downloading checkpoints for cloned experiment"
@@ -326,7 +328,7 @@ class Pipeline(object):
         self.app.logger.info("Testing complete !")
         self.app.logger.info("Assessing current best model")
         self.infer(args)
-        self.app.logger.info("Assesment complete ")
+        self.app.logger.info("Assessment complete ")
         self.app.logger.info(
             "Time to check what records to train on next loop , visit our front end for more details"
         )
@@ -576,7 +578,10 @@ class Pipeline(object):
         # write the output to S3
         key = os.path.join(self.expt_dir, "infer_outputs_{}.pkl".format(self.cur_loop))
         localfile = os.path.join("log", "infer_outputs_{}.pkl".format(self.cur_loop))
-        joblib.dump(remap_outputs, localfile)
+        # joblib.dump(remap_outputs, localfile)
+        with open(localfile, 'wb') as handle:
+            pickle.dump(remap_outputs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
         self.client.multi_part_upload_file(localfile, self.bucket_name, key)
         """
         self.client.multi_part_upload_with_s3(
